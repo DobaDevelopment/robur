@@ -58,6 +58,7 @@ local S_Menu2_CTActive = S_Menu2:AddBool("Activate Clone Tracker", true)
 local S_Menu2_Label1 = S_Menu2:AddLabel("Works on Shaco/Wukong/Leblanc/Neeko")
 -- End of Clone Tracker Section 
 
+local TextClipper = Vector(30, 15, 0)
 
 -- A Bool to end Rift timer
 local RiftOver = false
@@ -267,9 +268,9 @@ function OnDraw()
 						if (Renderer.IsOnScreen(pos)) then
 							if (S_Menu1_OnMap.Value) then
 								if (S_Menu1_OnMapBackground.Value) then
-									Renderer.DrawFilledRect(Renderer.WorldToScreen(pos), Vector(30, 15, 0), 2, S_Menu1_OnMapBackgroundColor.Value)
+									Renderer.DrawFilledRect(Renderer.WorldToScreen(pos), TextClipper, 2, S_Menu1_OnMapBackgroundColor.Value)
 								end
-								Renderer.DrawText(Renderer.WorldToScreen(pos), Vector(30, 15, 0), time, S_Menu1_OnMapColor.Value)
+								Renderer.DrawText(Renderer.WorldToScreen(pos), TextClipper, time, S_Menu1_OnMapColor.Value)
 							end
 						end
 
@@ -292,10 +293,10 @@ function OnDraw()
 		for i, val in ipairs(CloneEnum) do
 			if (CloneTracker[val][1] ~= nil and CloneTracker[val][2] == true) then
 				if(S_Menu2_OnMapBackground.Value) then
-					Renderer.DrawFilledRect(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, Vector(35, 15, 0), 2, S_Menu2_OnMapBackgroundColor.Value) --0x8B0000FF
+					Renderer.DrawFilledRect(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, Vector(36,15,0), 2, S_Menu2_OnMapBackgroundColor.Value) --0x8B0000FF
 				end
 				if (S_Menu2_OnMap.Value) then
-					Renderer.DrawText(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, {x = 500, y = 500}, "CLONE", S_Menu2_OnMapColor.Value)
+					Renderer.DrawText(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, TextClipper, "CLONE", S_Menu2_OnMapColor.Value)
 				end
 				
 			end
