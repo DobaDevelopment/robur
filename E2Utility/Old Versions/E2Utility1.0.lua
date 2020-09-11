@@ -22,12 +22,10 @@ local Player = ObjManager.Player
 -- Copied from Mista's scripts :)
 
 -- Verision
-local currentVersion = 1.1
+local currentVersion = 1.0
 
 -- Menu
 local M_Menu = Menu:AddMenu("E2Utility")
-
--- Start Jungle Timer Menus
 local S_Menu1 = M_Menu:AddMenu("JungleTimer")
 local S_Menu1_Settings = S_Menu1:AddMenu("Jungle Timer Settings")
 local S_Menu1_OnMap = S_Menu1_Settings:AddBool("Use on the Map", true)
@@ -42,22 +40,8 @@ local S_Menu1_Mobs = S_Menu1:AddMenu("Jungle Mobs List")
 local S_Menu1_JTActive = S_Menu1:AddBool("Activate Jungle Timer", true)
 local S_Menu1_Label1 = S_Menu1:AddLabel("An Exploit Included")
 
-local JungleMobsData = {821, 783, 61, 762, 131, 59, 820, 66, 499, 394, 288, 703, 400, 500, 866, 7}
+local JungleMobsData = {}
 local JungleTimerTable = {821, 783, 61, 762, 131, 59, 820, 66, 499, 394, 288, 703, 400, 500, 866, 7}
-
--- End of Jungle Menu Section 
-
--- Start Clone Tracker Menus
-local S_Menu2 = M_Menu:AddMenu("CloneTracker")
-local S_Menu2_Settings = S_Menu2:AddMenu("Clone Tracker Settings")
-local S_Menu2_OnMap = S_Menu2_Settings:AddBool("Track Clones", true)
-local S_Menu2_OnMapColor = S_Menu2_Settings:AddRGBAMenu("Clone Tracker on Text Color", 0x000000FF)
-local S_Menu2_OnMapBackground = S_Menu2_Settings:AddBool("Use a Clone Background Color", true)
-local S_Menu2_OnMapBackgroundColor = S_Menu2_Settings:AddRGBAMenu("Clone Background Color", 0xDF0101FF)
-local S_Menu2_CTActive = S_Menu2:AddBool("Activate Clone Tracker", true)
-local S_Menu2_Label1 = S_Menu2:AddLabel("Works on Shaco/Wukong/Leblanc/Neeko")
--- End of Clone Tracker Section 
-
 
 -- A Bool to end Rift timer
 local RiftOver = false
@@ -217,18 +201,6 @@ JungleMobsData = {
 	}
 }
 
--- Clone Tracker Variables
-local CloneEnum = {}
-local CloneActiveCount = 0
-local CloneAdjustment = Vector(-15, -50, 0)
-local CloneTracker = {
-	["Shaco"] = {nil, false},
-	["Leblanc"] = {nil, false},
-	["MonkeyKing"] = {nil, false},
-	["Neeko"] = {nil, false}
-}
--- End of Clone Tracker Variables
-
 -- Credit to jesseadams - https://gist.github.com/jesseadams/791673
 function SecondsToClock(seconds)
 	local seconds = tonumber(seconds)
@@ -245,19 +217,19 @@ end
 function OnDraw()
 	-- ForLooping only table has at least one element
 	if (#JungleTimerTable > 0 and S_Menu1_JTActive.Value) then
-		local currentGameTime = Game.GetTime()
-		for i, hash in pairs(JungleTimerTable) do
+		for i, hash in ipairs(JungleTimerTable) do
 			if (JungleMobsData[hash]["active"]) then
+				local currentGameTime = Game.GetTime()
 				local timeleft = JungleMobsData[hash]["saved_time"] - currentGameTime
 				-- First condition for removing ended timers and the second one for removing rift timer after baron spawned.
 				if (timeleft <= 0) then
 					JungleMobsData[hash]["active"] = false
-					JungleTimerTable[i] = nil
+					table.remove(JungleTimerTable, 1)
 				else
 					if (hash == 7 and currentGameTime >= 1200 and RiftOver == false) then
 						RiftOver = true
 						JungleMobsData[hash]["active"] = false
-						JungleTimerTable[i] = nil
+						table.remove(JungleTimerTable, 1)
 					else
 						-- adjustment vector for correcting position for some jungle mobs
 						local pos = JungleMobsData[hash]["position"] + JungleMobsData[hash]["adjustment"]
@@ -286,25 +258,29 @@ function OnDraw()
 			end
 		end
 	end
-
-
-	if (S_Menu2_CTActive.Value and CloneActiveCount > 0 and #CloneEnum > 0 ) then
-		for i, val in ipairs(CloneEnum) do
-			if (CloneTracker[val][1] ~= nil and CloneTracker[val][2] == true) then
-				if(S_Menu2_OnMapBackground.Value) then
-					Renderer.DrawFilledRect(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, Vector(35, 15, 0), 2, S_Menu2_OnMapBackgroundColor.Value) --0x8B0000FF
-				end
-				if (S_Menu2_OnMap.Value) then
-					Renderer.DrawText(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, {x = 500, y = 500}, "CLONE", S_Menu2_OnMapColor.Value)
-				end
-				
-			end
-		end
-	end
 end
 
 function GetHash(arg)
 	return (math.floor(arg) % 1000)
+end
+
+function GetJungleTimer(handle_t)
+	local ObjectAI = ObjManager.GetObjectByHandle(handle_t).AsAI
+	for i = 0, ObjectAI.BuffCount do
+		local buff = ObjectAI:GetBuff(i)
+		if (buff and buff.Name == "camprespawncountdownhidden") then
+			local hashID = GetHash(ObjectAI.Position.x)
+			JungleMobsData[hashID]["saved_time"] = buff.StartTime + JungleMobsData[hashID]["respawn_timer"] + 1
+			JungleMobsData[hashID]["active"] = true
+			table.insert(JungleTimerTable, hashID)
+		end
+	end
+end
+
+function OnCreate(obj)
+	if (obj ~= nil and obj.Name == "CampRespawn" and S_Menu1_JTActive.Value) then
+		delay(100, GetJungleTimer, obj.Handle)
+	end
 end
 
 local function getIndex(tab, val)
@@ -317,88 +293,13 @@ local function getIndex(tab, val)
 	return index
 end
 
-function GetJungleTimer(handle_t)
-	local ObjectAI = ObjManager.GetObjectByHandle(handle_t).AsAI
-	for i = 0, ObjectAI.BuffCount do
-		local buff = ObjectAI:GetBuff(i)
-		if (buff and buff.Name == "camprespawncountdownhidden") then
-			local hashID = GetHash(ObjectAI.Position.x)
-			if (JungleMobsData[hashID] ~= nil) then
-				JungleMobsData[hashID]["saved_time"] = buff.StartTime + JungleMobsData[hashID]["respawn_timer"] + 1
-				JungleMobsData[hashID]["active"] = true
-				local index = getIndex(JungleTimerTable, nil)
-				if (index == nil) then
-					table.insert(JungleTimerTable, hashID)
-				else
-					JungleTimerTable[index] = hashID
-				end
-			end
-		end
-	end
-end
-
-
--- Initialize Clone Tracker
-function CloneInit()
-	local enemyList = ObjManager.Get("enemy", "heroes")
-	for handle, enemy in pairs(enemyList) do
-		if (enemy ~= nil and enemy.IsAI) then
-			local cloneChamp = enemy.AsAI
-			if (CloneTracker[cloneChamp.CharName] ~= nil) then
-				CloneTracker[cloneChamp.CharName] = {nil, true}
-				table.insert(CloneEnum, cloneChamp.CharName)
-			end
-		end
-	end
-end
-
-function OnCreate(obj)
-	if( obj == nil ) then
-		return
-	end
-
-	-- Jungle Timer
-	if (S_Menu1_JTActive.Value and obj.Name == "CampRespawn" ) then
-		delay(100, GetJungleTimer, obj.Handle)
-	end
-
-	-- Clone Tracker
-	if (S_Menu2_CTActive.Value and obj.IsAI) then
-		local cloneChamp = obj.AsAI
-		if (cloneChamp ~= nil and cloneChamp.IsValid) then
-			if (CloneTracker[cloneChamp.CharName] ~= nil and CloneTracker[cloneChamp.CharName][2] == true) then
-				CloneTracker[cloneChamp.CharName][1] = cloneChamp
-				CloneActiveCount = CloneActiveCount + 1
-			end
-		end
-	end
-end
-
 function OnDelete(obj)
-	if( obj == nil ) then
-		return
-	end
-
-	if (S_Menu1_JTActive.Value and obj.Name == "CampRespawn") then
+	if (obj ~= nil and obj.Name == "CampRespawn" and S_Menu1_JTActive.Value) then
 		local hashID = GetHash(obj.AsAI.Position.x)
-		if (JungleMobsData[hashID] ~= nil) then
-			JungleMobsData[hashID]["saved_time"] = -1
-			JungleMobsData[hashID]["active"] = false
-			JungleTimerTable[hashID] = nil
-		end
-	end
-
-	if (S_Menu2_CTActive.Value and obj.IsAI) then
-		local cloneChamp = obj.AsAI
-		if (cloneChamp ~= nil and cloneChamp.IsValid) then
-			if (CloneTracker[cloneChamp.CharName] ~= nil and CloneTracker[cloneChamp.CharName][2] == true) then
-				CloneTracker[cloneChamp.CharName][1] = nil
-				-- Decrease the count only greater than 0
-				if (CloneActiveCount > 0) then
-					CloneActiveCount = CloneActiveCount - 1
-				end
-			end
-		end
+		JungleMobsData[hashID]["saved_time"] = -1
+		JungleMobsData[hashID]["active"] = false
+		local key = getIndex(JungleTimerTable, hashID)
+		table.remove(JungleTimerTable, key)
 	end
 end
 
@@ -412,8 +313,6 @@ function OnLoad()
 	for i, hash in ipairs(JungleTimerTable) do
 		JungleMobsData[hash]["b_menu"] = S_Menu1_Mobs:AddBool(JungleMobsData[hash]["m_name"], true)
 	end
-
-	CloneInit()
 
 	-- GamePrint Chat
 	Game.PrintChat(
