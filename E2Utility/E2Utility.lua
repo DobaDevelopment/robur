@@ -292,11 +292,13 @@ function OnDraw()
 	if (S_Menu2_CTActive.Value and CloneActiveCount > 0 and #CloneEnum > 0 ) then
 		for i, val in ipairs(CloneEnum) do
 			if (CloneTracker[val][1] ~= nil and CloneTracker[val][2] == true) then
-				if(S_Menu2_OnMapBackground.Value) then
-					Renderer.DrawFilledRect(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, Vector(36,15,0), 2, S_Menu2_OnMapBackgroundColor.Value) --0x8B0000FF
-				end
-				if (S_Menu2_OnMap.Value) then
-					Renderer.DrawText(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, TextClipper, "CLONE", S_Menu2_OnMapColor.Value)
+				if ( Renderer.IsOnScreen(CloneTracker[val][1].Position) ) then
+					if(S_Menu2_OnMapBackground.Value) then
+						Renderer.DrawFilledRect(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, Vector(36,15,0), 2, S_Menu2_OnMapBackgroundColor.Value) --0x8B0000FF
+					end
+					if (S_Menu2_OnMap.Value) then
+						Renderer.DrawText(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, TextClipper, "CLONE", S_Menu2_OnMapColor.Value)
+					end
 				end
 				
 			end
