@@ -3,7 +3,7 @@
 require("common.log")
 module("E2Utility", package.seeall, log.setup)
 
-local Menu = require("lol/Modules/Common/Menu")
+local i_Menu = require("lol/Modules/Common/Menu")
 
 local _Core = _G.CoreEx
 local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, Collision =
@@ -25,22 +25,12 @@ local Player = ObjManager.Player
 local currentVersion = 1.2
 
 -- Menu
-local M_Menu = Menu:AddMenu("E2Utility")
+local M_Menu = i_Menu:AddMenu("E2Utility")
 
 local BaseClass = {}
-BaseClass_mt = {__index = BaseClass}
-
-function BaseClass:New()
-	local self = setmetatable({}, BaseClass)
-	return self
-end
-
-function BaseClass:OnDraw()
-end
-function BaseClass:OnCreate(obj)
-end
-function BaseClass:OnDelete(obj)
-end
+function BaseClass:OnDraw() end
+function BaseClass:OnCreate(obj) end
+function BaseClass:OnDelete(obj) end
 
 local JungleTimer = {}
 setmetatable(JungleTimer, {__index = BaseClass})
