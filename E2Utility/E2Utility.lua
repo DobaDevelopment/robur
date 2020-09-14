@@ -22,213 +22,220 @@ local Player = ObjManager.Player
 -- Copied from Mista's scripts :)
 
 -- Verision
-local currentVersion = 1.1
+local currentVersion = 1.2
 
 -- Menu
 local M_Menu = Menu:AddMenu("E2Utility")
 
--- Start Jungle Timer Menus
-local S_Menu1 = M_Menu:AddMenu("JungleTimer")
-local S_Menu1_Settings = S_Menu1:AddMenu("Jungle Timer Settings")
-local S_Menu1_OnMap = S_Menu1_Settings:AddBool("Use on the Map", true)
-local S_Menu1_OnMapColor = S_Menu1_Settings:AddRGBAMenu("Timer Text on Map Color", 0x00FF00FF)
-local S_Menu1_OnMapBackground = S_Menu1_Settings:AddBool("Use a Background Color", true)
-local S_Menu1_OnMapBackgroundColor = S_Menu1_Settings:AddRGBAMenu("Background Color", 0x008000FF)
+local BaseClass = {}
+BaseClass_mt = {__index = BaseClass}
 
-local S_Menu1_OnMinimap = S_Menu1_Settings:AddBool("Used on the Minimap", true)
-local S_Menu1_OnMinimapColor = S_Menu1_Settings:AddRGBAMenu("Timer Text on Minimap Color", 0x00FF00FF)
+function BaseClass:New()
+	local self = setmetatable({}, BaseClass)
+	return self
+end
 
-local S_Menu1_Mobs = S_Menu1:AddMenu("Jungle Mobs List")
-local S_Menu1_JTActive = S_Menu1:AddBool("Activate Jungle Timer", true)
-local S_Menu1_Label1 = S_Menu1:AddLabel("An Exploit Included")
+function BaseClass:OnDraw()
+end
+function BaseClass:OnCreate(obj)
+end
+function BaseClass:OnDelete(obj)
+end
 
-local JungleMobsData = {821, 783, 61, 762, 131, 59, 820, 66, 499, 394, 288, 703, 400, 500, 866, 7}
-local JungleTimerTable = {821, 783, 61, 762, 131, 59, 820, 66, 499, 394, 288, 703, 400, 500, 866, 7}
-
--- End of Jungle Menu Section 
-
--- Start Clone Tracker Menus
-local S_Menu2 = M_Menu:AddMenu("CloneTracker")
-local S_Menu2_Settings = S_Menu2:AddMenu("Clone Tracker Settings")
-local S_Menu2_OnMap = S_Menu2_Settings:AddBool("Track Clones", true)
-local S_Menu2_OnMapColor = S_Menu2_Settings:AddRGBAMenu("Clone Tracker on Text Color", 0x000000FF)
-local S_Menu2_OnMapBackground = S_Menu2_Settings:AddBool("Use a Clone Background Color", true)
-local S_Menu2_OnMapBackgroundColor = S_Menu2_Settings:AddRGBAMenu("Clone Background Color", 0xDF0101FF)
-local S_Menu2_CTActive = S_Menu2:AddBool("Activate Clone Tracker", true)
-local S_Menu2_Label1 = S_Menu2:AddLabel("Works on Shaco/Wukong/Leblanc/Neeko")
--- End of Clone Tracker Section 
-
+local JungleTimer = {}
+setmetatable(JungleTimer, {__index = BaseClass})
+local CloneTracker = {}
+setmetatable(CloneTracker, {__index = BaseClass})
+local InhibitorsTimer = {}
+setmetatable(InhibitorsTimer, {__index = BaseClass})
+local T_Classes = {JungleTimer, CloneTracker, InhibitorsTimer}
 local TextClipper = Vector(30, 15, 0)
 
--- A Bool to end Rift timer
-local RiftOver = false
+function JungleTimer:Init()
+	-- A Bool to end Rift timer
+	self.RiftOver = false
 
--- [id] hashtable ID
--- ["m_name"] Name for the menu
--- ["position"] Position for the jungle mob
--- ["adjustment"] A Vector to adjust the position because some of them are at the accurate position
--- ["respawn_timer"] Respawning time
--- ["saved_time"] GameTime + Respawning Time
--- ["active"] Active status for the current jungle mob
--- ["b_menu"] Menu boolean value
-JungleMobsData = {
-	[821] = {
-		["m_name"] = "Blue (West)",
-		["position"] = Vector(3821.48, 51.12, 8101.05),
-		["adjustment"] = Vector(0, -300, 0),
-		["respawn_timer"] = 300,
-		["saved_time"] = 90,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[288] = {
-		["m_name"] = "Gromp (West)",
-		["position"] = Vector(2288.01, 51.77, 8448.13),
-		["adjustment"] = Vector(-100, 0, 0),
-		["respawn_timer"] = 120,
-		["saved_time"] = 102,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[783] = {
-		["m_name"] = "Wovles (West)",
-		["position"] = Vector(3783.37, 52.46, 6495.56),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 120,
-		["saved_time"] = 90,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[61] = {
-		["m_name"] = "Raptors (South)",
-		["position"] = Vector(7061.5, 50.12, 5325.50),
-		["adjustment"] = Vector(-100, 100, 0),
-		["respawn_timer"] = 120,
-		["saved_time"] = 90,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[762] = {
-		["m_name"] = "Red (South)",
-		["position"] = Vector(7762.24, 53.96, 4011.18),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 300,
-		["saved_time"] = 90,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[394] = {
-		["m_name"] = "Krugs (South)",
-		["position"] = Vector(8394.76, 50.73, 2641.59),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 120,
-		["saved_time"] = 102,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[400] = {
-		["m_name"] = "Scuttler (Baron)",
-		["position"] = Vector(4400.00, -66.53, 9600.00),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 150,
-		["saved_time"] = 195,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[500] = {
-		["m_name"] = "Scuttler (Dragon)",
-		["position"] = Vector(10500.00, -62.81, 5170.00),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 150,
-		["saved_time"] = 195,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[866] = {
-		["m_name"] = "Dragon",
-		["position"] = Vector(9866.14, -71.24, 4414.01),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 300,
-		["saved_time"] = 300,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[7] = {
-		["m_name"] = "Baron/Rift",
-		["position"] = Vector(5007.12, -71.24, 10471.44),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 360,
-		["saved_time"] = 480,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[131] = {
-		["m_name"] = "Blue (East)",
-		["position"] = Vector(11131.72, 51.72, 6990.84),
-		["adjustment"] = Vector(-100, 0, 0),
-		["respawn_timer"] = 300,
-		["saved_time"] = 90,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[703] = {
-		["m_name"] = "Gromp (East)",
-		["position"] = Vector(12703.62, 51.69, 6443.98),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 120,
-		["saved_time"] = 102,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[59] = {
-		["m_name"] = "Wovles (East)",
-		["position"] = Vector(11059.76, 60.35, 8419.83),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 120,
-		["saved_time"] = 90,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[820] = {
-		["m_name"] = "Raptors (North)",
-		["position"] = Vector(7820.22, 52.19, 9644.45),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 120,
-		["saved_time"] = 90,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[66] = {
-		["m_name"] = "Red (North)",
-		["position"] = Vector(7066.86, 56.18, 10975.54),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 300,
-		["saved_time"] = 90,
-		["active"] = true,
-		["b_menu"] = true
-	},
-	[499] = {
-		["m_name"] = "Krugs (North)",
-		["position"] = Vector(6499.49, 56.47, 12287.37),
-		["adjustment"] = Vector(0, 0, 0),
-		["respawn_timer"] = 120,
-		["saved_time"] = 102,
-		["active"] = true,
-		["b_menu"] = true
+	-- [id] hashtable ID
+	-- ["m_name"] Name for the menu
+	-- ["position"] Position for the jungle mob
+	-- ["adjustment"] A Vector to adjust the position because some of them are at the accurate position
+	-- ["respawn_timer"] Respawning time
+	-- ["saved_time"] GameTime + Respawning Time
+	-- ["active"] Active status for the current jungle mob
+	-- ["b_menu"] Menu boolean value
+	self.JungleMobsData = {
+		[821] = {
+			["m_name"] = "Blue (West)",
+			["position"] = Vector(3821.48, 51.12, 8101.05),
+			["adjustment"] = Vector(0, -300, 0),
+			["respawn_timer"] = 300,
+			["saved_time"] = 90,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[288] = {
+			["m_name"] = "Gromp (West)",
+			["position"] = Vector(2288.01, 51.77, 8448.13),
+			["adjustment"] = Vector(-100, 0, 0),
+			["respawn_timer"] = 120,
+			["saved_time"] = 102,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[783] = {
+			["m_name"] = "Wovles (West)",
+			["position"] = Vector(3783.37, 52.46, 6495.56),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 120,
+			["saved_time"] = 90,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[61] = {
+			["m_name"] = "Raptors (South)",
+			["position"] = Vector(7061.5, 50.12, 5325.50),
+			["adjustment"] = Vector(-100, 100, 0),
+			["respawn_timer"] = 120,
+			["saved_time"] = 90,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[762] = {
+			["m_name"] = "Red (South)",
+			["position"] = Vector(7762.24, 53.96, 4011.18),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 300,
+			["saved_time"] = 90,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[394] = {
+			["m_name"] = "Krugs (South)",
+			["position"] = Vector(8394.76, 50.73, 2641.59),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 120,
+			["saved_time"] = 102,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[400] = {
+			["m_name"] = "Scuttler (Baron)",
+			["position"] = Vector(4400.00, -66.53, 9600.00),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 150,
+			["saved_time"] = 195,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[500] = {
+			["m_name"] = "Scuttler (Dragon)",
+			["position"] = Vector(10500.00, -62.81, 5170.00),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 150,
+			["saved_time"] = 195,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[866] = {
+			["m_name"] = "Dragon",
+			["position"] = Vector(9866.14, -71.24, 4414.01),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 300,
+			["saved_time"] = 300,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[7] = {
+			["m_name"] = "Baron/Rift",
+			["position"] = Vector(5007.12, -71.24, 10471.44),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 360,
+			["saved_time"] = 480,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[131] = {
+			["m_name"] = "Blue (East)",
+			["position"] = Vector(11131.72, 51.72, 6990.84),
+			["adjustment"] = Vector(-100, 0, 0),
+			["respawn_timer"] = 300,
+			["saved_time"] = 90,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[703] = {
+			["m_name"] = "Gromp (East)",
+			["position"] = Vector(12703.62, 51.69, 6443.98),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 120,
+			["saved_time"] = 102,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[59] = {
+			["m_name"] = "Wovles (East)",
+			["position"] = Vector(11059.76, 60.35, 8419.83),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 120,
+			["saved_time"] = 90,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[820] = {
+			["m_name"] = "Raptors (North)",
+			["position"] = Vector(7820.22, 52.19, 9644.45),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 120,
+			["saved_time"] = 90,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[66] = {
+			["m_name"] = "Red (North)",
+			["position"] = Vector(7066.86, 56.18, 10975.54),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 300,
+			["saved_time"] = 90,
+			["active"] = true,
+			["b_menu"] = true
+		},
+		[499] = {
+			["m_name"] = "Krugs (North)",
+			["position"] = Vector(6499.49, 56.47, 12287.37),
+			["adjustment"] = Vector(0, 0, 0),
+			["respawn_timer"] = 120,
+			["saved_time"] = 102,
+			["active"] = true,
+			["b_menu"] = true
+		}
 	}
-}
+	self.JungleTimerTable = {821, 783, 61, 762, 131, 59, 820, 66, 499, 394, 288, 703, 400, 500, 866, 7}
+	JungleTimer:Menu()
+end
 
--- Clone Tracker Variables
-local CloneEnum = {}
-local CloneActiveCount = 0
-local CloneAdjustment = Vector(-15, -50, 0)
-local CloneTracker = {
-	["Shaco"] = {nil, false},
-	["Leblanc"] = {nil, false},
-	["MonkeyKing"] = {nil, false},
-	["Neeko"] = {nil, false}
-}
--- End of Clone Tracker Variables
+function JungleTimer:Menu()
+	-- Start Jungle Timer Menus
+	self.S_Menu1 = M_Menu:AddMenu("JungleTimer")
+	self.S_Menu1_Settings = self.S_Menu1:AddMenu("Jungle Timer Settings")
+	self.S_Menu1_OnMap = self.S_Menu1_Settings:AddBool("Use on the Map", true)
+	self.S_Menu1_OnMapColor = self.S_Menu1_Settings:AddRGBAMenu("Timer Text on Map Color", 0x00FF00FF)
+	self.S_Menu1_OnMapBackground = self.S_Menu1_Settings:AddBool("Use a Background Color", true)
+	self.S_Menu1_OnMapBackgroundColor = self.S_Menu1_Settings:AddRGBAMenu("Background Color", 0x008000FF)
+
+	self.S_Menu1_OnMinimap = self.S_Menu1_Settings:AddBool("Used on the Minimap", true)
+	self.S_Menu1_OnMinimapColor = self.S_Menu1_Settings:AddRGBAMenu("Timer Text on Minimap Color", 0x00FF00FF)
+
+	self.S_Menu1_Mobs = self.S_Menu1:AddMenu("Jungle Mobs List")
+	self.S_Menu1_JTActive = self.S_Menu1:AddBool("Activate Jungle Timer", true)
+	self.S_Menu1_Label1 = self.S_Menu1:AddLabel("An Exploit Included")
+
+	--Add menu for the jungle mobs
+	for i, hash in ipairs(self.JungleTimerTable) do
+		self.JungleMobsData[hash]["b_menu"] = self.S_Menu1_Mobs:AddBool(self.JungleMobsData[hash]["m_name"], true)
+	end
+
+	-- End of Jungle Menu Section
+end
 
 -- Credit to jesseadams - https://gist.github.com/jesseadams/791673
 function SecondsToClock(seconds)
@@ -240,69 +247,6 @@ function SecondsToClock(seconds)
 		local mins = string.format("%01.f", math.floor(seconds / 60 - (hours * 60)))
 		local secs = string.format("%02.f", math.floor(seconds - hours * 3600 - mins * 60))
 		return mins .. ":" .. secs
-	end
-end
-
-function OnDraw()
-	-- ForLooping only table has at least one element
-	if (#JungleTimerTable > 0 and S_Menu1_JTActive.Value) then
-		local currentGameTime = Game.GetTime()
-		for i, hash in pairs(JungleTimerTable) do
-			if (JungleMobsData[hash]["active"]) then
-				local timeleft = JungleMobsData[hash]["saved_time"] - currentGameTime
-				-- First condition for removing ended timers and the second one for removing rift timer after baron spawned.
-				if (timeleft <= 0) then
-					JungleMobsData[hash]["active"] = false
-					JungleTimerTable[i] = nil
-				else
-					if (hash == 7 and currentGameTime >= 1200 and RiftOver == false) then
-						RiftOver = true
-						JungleMobsData[hash]["active"] = false
-						JungleTimerTable[i] = nil
-					else
-						-- adjustment vector for correcting position for some jungle mobs
-						local pos = JungleMobsData[hash]["position"] + JungleMobsData[hash]["adjustment"]
-						-- convert time into m:ss format
-						local time = tostring(SecondsToClock(timeleft))
-						-- draw only pos is on the screen
-						if (Renderer.IsOnScreen(pos)) then
-							if (S_Menu1_OnMap.Value) then
-								if (S_Menu1_OnMapBackground.Value) then
-									Renderer.DrawFilledRect(Renderer.WorldToScreen(pos), TextClipper, 2, S_Menu1_OnMapBackgroundColor.Value)
-								end
-								Renderer.DrawText(Renderer.WorldToScreen(pos), TextClipper, time, S_Menu1_OnMapColor.Value)
-							end
-						end
-
-						if (S_Menu1_OnMinimap.Value) then
-							Renderer.DrawText(
-								Renderer.WorldToMinimap(pos) + Vector(-10, -10, 0),
-								Vector(30, 15, 0),
-								time,
-								S_Menu1_OnMinimapColor.Value
-							)
-						end
-					end
-				end
-			end
-		end
-	end
-
-
-	if (S_Menu2_CTActive.Value and CloneActiveCount > 0 and #CloneEnum > 0 ) then
-		for i, val in ipairs(CloneEnum) do
-			if (CloneTracker[val][1] ~= nil and CloneTracker[val][2] == true) then
-				if ( Renderer.IsOnScreen(CloneTracker[val][1].Position) ) then
-					if(S_Menu2_OnMapBackground.Value) then
-						Renderer.DrawFilledRect(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, Vector(36,15,0), 2, S_Menu2_OnMapBackgroundColor.Value) --0x8B0000FF
-					end
-					if (S_Menu2_OnMap.Value) then
-						Renderer.DrawText(Renderer.WorldToScreen(CloneTracker[val][1].Position) + CloneAdjustment, TextClipper, "CLONE", S_Menu2_OnMapColor.Value)
-					end
-				end
-				
-			end
-		end
 	end
 end
 
@@ -320,88 +264,337 @@ local function getIndex(tab, val)
 	return index
 end
 
-function GetJungleTimer(handle_t)
-	local ObjectAI = ObjManager.GetObjectByHandle(handle_t).AsAI
-	for i = 0, ObjectAI.BuffCount do
-		local buff = ObjectAI:GetBuff(i)
-		if (buff and buff.Name == "camprespawncountdownhidden") then
-			local hashID = GetHash(ObjectAI.Position.x)
-			if (JungleMobsData[hashID] ~= nil) then
-				JungleMobsData[hashID]["saved_time"] = buff.StartTime + JungleMobsData[hashID]["respawn_timer"] + 1
-				JungleMobsData[hashID]["active"] = true
-				local index = getIndex(JungleTimerTable, nil)
-				if (index == nil) then
-					table.insert(JungleTimerTable, hashID)
+function JungleTimer:OnDraw()
+	-- ForLooping only table has at least one element
+	if (#self.JungleTimerTable > 0 and self.S_Menu1_JTActive.Value) then
+		local currentGameTime = Game.GetTime()
+		for i, hash in pairs(self.JungleTimerTable) do
+			if (self.JungleMobsData[hash]["active"]) then
+				local timeleft = self.JungleMobsData[hash]["saved_time"] - currentGameTime
+				-- First condition for removing ended timers and the second one for removing rift timer after baron spawned.
+				if (timeleft <= 0) then
+					self.JungleMobsData[hash]["active"] = false
+					self.JungleTimerTable[i] = nil
 				else
-					JungleTimerTable[index] = hashID
+					if (hash == 7 and currentGameTime >= 1200 and self.RiftOver == false) then
+						self.RiftOver = true
+						self.JungleMobsData[hash]["active"] = false
+						self.JungleTimerTable[i] = nil
+					else
+						-- adjustment vector for correcting position for some jungle mobs
+						local pos = self.JungleMobsData[hash]["position"] + self.JungleMobsData[hash]["adjustment"]
+						-- convert time into m:ss format
+						local time = tostring(SecondsToClock(timeleft))
+						-- draw only pos is on the screen
+						if (Renderer.IsOnScreen(pos)) then
+							if (self.S_Menu1_OnMap.Value) then
+								if (self.S_Menu1_OnMapBackground.Value) then
+									Renderer.DrawFilledRect(Renderer.WorldToScreen(pos), TextClipper, 2, self.S_Menu1_OnMapBackgroundColor.Value)
+								end
+								Renderer.DrawText(Renderer.WorldToScreen(pos), TextClipper, time, self.S_Menu1_OnMapColor.Value)
+							end
+						end
+
+						if (self.S_Menu1_OnMinimap.Value) then
+							Renderer.DrawText(
+								Renderer.WorldToMinimap(pos) + Vector(-10, -10, 0),
+								TextClipper,
+								time,
+								self.S_Menu1_OnMinimapColor.Value
+							)
+						end
+					end
 				end
 			end
 		end
 	end
 end
 
+function JungleTimer:OnCreate(obj)
+	-- Jungle Timer
+	if (self.S_Menu1_JTActive.Value and obj.Name == "CampRespawn") then
+		delay(
+			100,
+			function()
+				local ObjectAI = ObjManager.GetObjectByHandle(obj.Handle).AsAI
+				for i = 0, ObjectAI.BuffCount do
+					local buff = ObjectAI:GetBuff(i)
+					if (buff and buff.Name == "camprespawncountdownhidden") then
+						local hashID = GetHash(ObjectAI.Position.x)
+						if (self.JungleMobsData[hashID] ~= nil) then
+							self.JungleMobsData[hashID]["saved_time"] = buff.StartTime + self.JungleMobsData[hashID]["respawn_timer"] + 1
+							self.JungleMobsData[hashID]["active"] = true
+							local index = getIndex(self.JungleTimerTable, nil)
+							if (index == nil) then
+								table.insert(self.JungleTimerTable, hashID)
+							else
+								self.JungleTimerTable[index] = hashID
+							end
+						end
+					end
+				end
+			end
+		)
+	end
+end
 
--- Initialize Clone Tracker
-function CloneInit()
+function JungleTimer:OnDelete(obj)
+	if (self.S_Menu1_JTActive.Value and obj.Name == "CampRespawn") then
+		local hashID = GetHash(obj.AsAI.Position.x)
+		if (self.JungleMobsData[hashID] ~= nil) then
+			self.JungleMobsData[hashID]["saved_time"] = -1
+			self.JungleMobsData[hashID]["active"] = false
+			self.JungleTimerTable[hashID] = nil
+		end
+	end
+end
+
+function CloneTracker:Init()
+	-- Clone Tracker Variables
+	self.CloneEnum = {}
+	self.CloneActiveCount = 0
+	self.CloneAdjustment = Vector(-15, -50, 0)
+	self.CloneTracker = {
+		["Shaco"] = {nil, false},
+		["Leblanc"] = {nil, false},
+		["MonkeyKing"] = {nil, false},
+		["Neeko"] = {nil, false}
+	}
+	self.Text = "CLONE"
+	-- End of Clone Tracker Variables
+
 	local enemyList = ObjManager.Get("enemy", "heroes")
 	for handle, enemy in pairs(enemyList) do
 		if (enemy ~= nil and enemy.IsAI) then
 			local cloneChamp = enemy.AsAI
-			if (CloneTracker[cloneChamp.CharName] ~= nil) then
-				CloneTracker[cloneChamp.CharName] = {nil, true}
-				table.insert(CloneEnum, cloneChamp.CharName)
+			if (self.CloneTracker[cloneChamp.CharName] ~= nil) then
+				self.CloneTracker[cloneChamp.CharName] = {nil, true}
+				table.insert(self.CloneEnum, cloneChamp.CharName)
 			end
 		end
+	end
+
+	CloneTracker:Menu()
+end
+
+function CloneTracker:Menu()
+	-- Start Clone Tracker Menus
+	self.S_Menu2 = M_Menu:AddMenu("CloneTracker")
+	self.S_Menu2_Settings = self.S_Menu2:AddMenu("Clone Tracker Settings")
+	self.S_Menu2_OnMap = self.S_Menu2_Settings:AddBool("Track Clones", true)
+	self.S_Menu2_OnMapColor = self.S_Menu2_Settings:AddRGBAMenu("Clone Tracker on Text Color", 0x000000FF)
+	self.S_Menu2_OnMapBackground = self.S_Menu2_Settings:AddBool("Use a Clone Background Color", true)
+	self.S_Menu2_OnMapBackgroundColor = self.S_Menu2_Settings:AddRGBAMenu("Clone Background Color", 0xDF0101FF)
+	self.S_Menu2_CTActive = self.S_Menu2:AddBool("Activate Clone Tracker", true)
+	self.S_Menu2_Label1 = self.S_Menu2:AddLabel("Works on Shaco/Wukong/Leblanc/Neeko")
+	-- End of Clone Tracker Section
+end
+
+function CloneTracker:OnDraw()
+	if (self.S_Menu2_CTActive.Value and self.CloneActiveCount > 0 and #self.CloneEnum > 0) then
+		for i, val in ipairs(self.CloneEnum) do
+			if (self.CloneTracker[val][1] ~= nil and self.CloneTracker[val][2] == true) then
+				if (Renderer.IsOnScreen(self.CloneTracker[val][1].Position)) then
+					if (self.S_Menu2_OnMapBackground.Value) then
+						Renderer.DrawFilledRect(
+							Renderer.WorldToScreen(self.CloneTracker[val][1].Position) + self.CloneAdjustment,
+							Vector(36, 15, 0),
+							2,
+							self.S_Menu2_OnMapBackgroundColor.Value
+						)
+					end
+					if (self.S_Menu2_OnMap.Value) then
+						Renderer.DrawText(
+							Renderer.WorldToScreen(self.CloneTracker[val][1].Position) + self.CloneAdjustment,
+							TextClipper,
+							self.Text,
+							self.S_Menu2_OnMapColor.Value
+						)
+					end
+				end
+			end
+		end
+	end
+end
+
+function CloneTracker:OnCreate(obj)
+	if (self.S_Menu2_CTActive.Value and obj.IsAI) then
+		local cloneChamp = obj.AsAI
+		if (cloneChamp ~= nil and cloneChamp.IsValid) then
+			if (self.CloneTracker[cloneChamp.CharName] ~= nil and self.CloneTracker[cloneChamp.CharName][2] == true) then
+				self.CloneTracker[cloneChamp.CharName][1] = cloneChamp
+				self.CloneActiveCount = self.CloneActiveCount + 1
+			end
+		end
+	end
+end
+
+function CloneTracker:OnDelete(obj)
+	if (self.S_Menu2_CTActive.Value and obj.IsAI) then
+		local cloneChamp = obj.AsAI
+		if (cloneChamp ~= nil and cloneChamp.IsValid) then
+			if (self.CloneTracker[cloneChamp.CharName] ~= nil and self.CloneTracker[cloneChamp.CharName][2] == true) then
+				self.CloneTracker[cloneChamp.CharName][1] = nil
+				-- Decrease the count only greater than 0
+				if (self.CloneActiveCount > 0) then
+					self.CloneActiveCount = self.CloneActiveCount - 1
+				end
+			end
+		end
+	end
+end
+
+function InhibitorsTimer:Init()
+	self.InhibitorsTable = {
+		[171] = {IsDestroyed = false, IsAlly = true, Position = Vector(1171, 91, 3571), RespawnTime = 0.0, Name = "Ally Top"},
+		[203] = {IsDestroyed = false, IsAlly = true, Position = Vector(3203, 92, 3208), RespawnTime = 0.0, Name = "Ally Mid"},
+		[452] = {IsDestroyed = false, IsAlly = true, Position = Vector(3452, 89, 1236), RespawnTime = 0.0, Name = "Ally Bot"},
+		[261] = {
+			IsDestroyed = false,
+			IsAlly = false,
+			Position = Vector(11261, 88, 13676),
+			RespawnTime = 0.0,
+			Name = "Enemy Top"
+		},
+		[598] = {
+			IsDestroyed = false,
+			IsAlly = false,
+			Position = Vector(11598, 89, 11667),
+			RespawnTime = 0.0,
+			Name = "Enemy Mid"
+		},
+		[604] = {
+			IsDestroyed = false,
+			IsAlly = false,
+			Position = Vector(13604, 89, 11316),
+			RespawnTime = 0.0,
+			Name = "Enemy Bot"
+		}
+	}
+
+	self.DestroyedInhibitors = 0
+	self.ConstRespawnTime = 300.0
+
+	self.SpawnComparor = {
+		["SRUAP_Chaos_Inhibitor_Spawn_sound.troy"] = true,
+		["SRUAP_Order_Inhibitor_Idle1_sound.troy"] = true
+	}
+	self.DestroyComparor = {
+		["SRUAP_Chaos_Inhibitor_Idle1_soundy.troy"] = true,
+		["SRUAP_Order_Inhibitor_Idle1_sound.troy"] = true
+	}
+
+	local inhibitorsList = ObjManager.Get("all", "inhibitors")
+	for i, obj in ipairs(inhibitorsList) do
+		local objAT = obj.AsAttackableUnit
+		if (obj and obj.IsValid and objAT.Health <= 0.0) then
+			local hash = GetHash(obj.Position.x)
+			self.InhibitorsTable[hash].IsDestroyed = true
+			self.DestroyedInhibitors = self.DestroyedInhibitors + 1
+		end
+	end
+
+	InhibitorsTimer:Menu()
+end
+
+function InhibitorsTimer:Menu()
+	self.S_Menu = M_Menu:AddMenu("InhibitorsTimer")
+	self.S_Menu_Settings = self.S_Menu:AddMenu("Inhibitors Timer Settings")
+	self.S_Menu_OnMap = self.S_Menu_Settings:AddBool("Use a Inhibitors Timer Text", true)
+	self.S_Menu_OnMapColor = self.S_Menu_Settings:AddRGBAMenu("Inhibitors Timer Text Color", 0x000000FF)
+	self.S_Menu_OnMapBackground = self.S_Menu_Settings:AddBool("Use a Inhibitors Timer Background", true)
+	self.S_Menu_OnMapBackgroundColor = self.S_Menu_Settings:AddRGBAMenu("Inhibitors Timer Background Color", 0xDF0101FF)
+	self.S_Menu_OnMinimap = self.S_Menu_Settings:AddBool("Use a Inhibitors Timer Minimap", false)
+	self.S_Menu_OnMinimapColor = self.S_Menu_Settings:AddRGBAMenu("Inhibitors Timer Minimap Color", 0x00FF00FF)
+	-- TODO Maybe I gotta add them later
+	--self.S_Menu_AllyActive = self.S_Menu:AddBool("Track Ally Inhibitors Timer", true)
+	--self.S_Menu_EnemyActive = self.S_Menu:AddBool("Track Enemy Inhibitors Timer", true)
+	self.S_Menu_Active = self.S_Menu:AddBool("Activate Inhibitors Timer", true)
+end
+
+function InhibitorsTimer:OnDelete(obj)
+	local objName = obj.Name
+	if (not obj.IsAttackbleUnit and not obj.IsValid and not self.S_Menu_Active.Value and not objName) then
+		return
+	end
+
+	local hash = GetHash(obj.Position.x)
+	if (self.DestroyComparor[objName]) then
+		self.InhibitorsTable[hash].IsDestroyed = true
+		self.InhibitorsTable[hash].RespawnTime = Game:GetTime() + self.ConstRespawnTime
+		self.DestroyedInhibitors = self.DestroyedInhibitors + 1
+	else
+		if (self.SpawnComparor[objName]) then
+			self.InhibitorsTable[hash].IsDestroyed = false
+			self.InhibitorsTable[hash].RespawnTime = 0.0
+			if( self.DestroyedInhibitors > 0) then
+				self.DestroyedInhibitors = self.DestroyedInhibitors - 1
+			end
+		end
+	end
+end
+
+function InhibitorsTimer:OnDraw()
+	if (self.S_Menu_Active.Value and self.DestroyedInhibitors > 0) then
+		for k, v in pairs(self.InhibitorsTable) do
+			if (self.InhibitorsTable[k].IsDestroyed) then
+				local time = self.InhibitorsTable[k].RespawnTime - Game.GetTime()
+				local timeleft = tostring(SecondsToClock(time))
+				if (time <= 0) then
+					self.InhibitorsTable[k].IsDestroyed = false
+					self.InhibitorsTable[k].RespawnTime = 0.0
+					if( self.DestroyedInhibitors > 0) then
+						self.DestroyedInhibitors = self.DestroyedInhibitors - 1
+					end
+				else
+					local pos = self.InhibitorsTable[k].Position
+					--draw only pos is on the screen
+					if (Renderer.IsOnScreen(pos)) then
+						if (self.S_Menu_OnMap.Value) then
+							if (self.S_Menu_OnMapBackground.Value) then
+								Renderer.DrawFilledRect(Renderer.WorldToScreen(pos), TextClipper, 2, self.S_Menu_OnMapBackgroundColor.Value)
+							end
+							Renderer.DrawText(Renderer.WorldToScreen(pos), TextClipper, timeleft, self.S_Menu_OnMapColor.Value)
+						end
+					end
+
+					if (self.S_Menu_OnMinimap.Value) then
+						Renderer.DrawText(
+							Renderer.WorldToMinimap(pos) + Vector(-15, -10, 0),
+							TextClipper,
+							timeleft,
+							self.S_Menu_OnMinimapColor.Value
+						)
+					end
+				end
+			end
+		end
+	end
+end
+
+function OnDraw()
+	for i, class in ipairs(T_Classes) do
+		class:OnDraw()
 	end
 end
 
 function OnCreate(obj)
-	if( obj == nil ) then
+	if (obj == nil) then
 		return
 	end
 
-	-- Jungle Timer
-	if (S_Menu1_JTActive.Value and obj.Name == "CampRespawn" ) then
-		delay(100, GetJungleTimer, obj.Handle)
-	end
-
-	-- Clone Tracker
-	if (S_Menu2_CTActive.Value and obj.IsAI) then
-		local cloneChamp = obj.AsAI
-		if (cloneChamp ~= nil and cloneChamp.IsValid) then
-			if (CloneTracker[cloneChamp.CharName] ~= nil and CloneTracker[cloneChamp.CharName][2] == true) then
-				CloneTracker[cloneChamp.CharName][1] = cloneChamp
-				CloneActiveCount = CloneActiveCount + 1
-			end
-		end
+	for i, class in ipairs(T_Classes) do
+		class:OnCreate(obj)
 	end
 end
 
 function OnDelete(obj)
-	if( obj == nil ) then
+	if (obj == nil) then
 		return
 	end
 
-	if (S_Menu1_JTActive.Value and obj.Name == "CampRespawn") then
-		local hashID = GetHash(obj.AsAI.Position.x)
-		if (JungleMobsData[hashID] ~= nil) then
-			JungleMobsData[hashID]["saved_time"] = -1
-			JungleMobsData[hashID]["active"] = false
-			JungleTimerTable[hashID] = nil
-		end
-	end
-
-	if (S_Menu2_CTActive.Value and obj.IsAI) then
-		local cloneChamp = obj.AsAI
-		if (cloneChamp ~= nil and cloneChamp.IsValid) then
-			if (CloneTracker[cloneChamp.CharName] ~= nil and CloneTracker[cloneChamp.CharName][2] == true) then
-				CloneTracker[cloneChamp.CharName][1] = nil
-				-- Decrease the count only greater than 0
-				if (CloneActiveCount > 0) then
-					CloneActiveCount = CloneActiveCount - 1
-				end
-			end
-		end
+	for i, class in ipairs(T_Classes) do
+		class:OnDelete(obj)
 	end
 end
 
@@ -411,12 +604,9 @@ function OnLoad()
 	EventManager.RegisterCallback(Enums.Events.OnCreateObject, OnCreate)
 	EventManager.RegisterCallback(Enums.Events.OnDeleteObject, OnDelete)
 
-	-- Add menu for the jungle mobs
-	for i, hash in ipairs(JungleTimerTable) do
-		JungleMobsData[hash]["b_menu"] = S_Menu1_Mobs:AddBool(JungleMobsData[hash]["m_name"], true)
+	for i, class in ipairs(T_Classes) do
+		class:Init()
 	end
-
-	CloneInit()
 
 	-- GamePrint Chat
 	Game.PrintChat(
