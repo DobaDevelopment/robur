@@ -1,6 +1,9 @@
+-- Requirements
+
 require("common.log")
 module("E2Utility", package.seeall, log.setup)
 
+local i_Menu = require("lol/Modules/Common/Menu")
 
 local _Core = _G.CoreEx
 local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, Collision =
@@ -19,11 +22,10 @@ local Player = ObjManager.Player
 -- Copied from Mista's scripts :)
 
 -- Verision
-local currentVersion = 1.3
+local currentVersion = 1.2
 
 -- Menu
-local i_Menu = _G.Libs.Menu
-local M_Menu = i_Menu:AddMenu("E2Utility", "E2Utility")
+local M_Menu = i_Menu:AddMenu("E2Utility")
 
 local BaseClass = {}
 function BaseClass:OnDraw() end
@@ -36,9 +38,7 @@ local CloneTracker = {}
 setmetatable(CloneTracker, {__index = BaseClass})
 local InhibitorsTimer = {}
 setmetatable(InhibitorsTimer, {__index = BaseClass})
-local DragonBaronTracker = {}
-setmetatable(DragonBaronTracker, {__index = BaseClass})
-local T_Classes = {JungleTimer, CloneTracker, InhibitorsTimer, DragonBaronTracker}
+local T_Classes = {JungleTimer, CloneTracker, InhibitorsTimer}
 local TextClipper = Vector(30, 15, 0)
 
 function JungleTimer:Init()
@@ -204,24 +204,24 @@ function JungleTimer:Init()
 end
 
 function JungleTimer:Menu()
-	-- Start Jungle Timer Menu
-	self.S_Menu1 = M_Menu:AddMenu("JGT_Menu", "JungleTimer")
-	self.S_Menu1_Settings = self.S_Menu1:AddMenu("JGT_Settings", "Jungle Timer Settings")
-	self.S_Menu1_OnMap = self.S_Menu1_Settings:AddBool("JGT_DrawMap", "Use on the Map", true)
-	self.S_Menu1_OnMapColor = self.S_Menu1_Settings:AddRGBAMenu("JGT_MapTextCol", "Timer Text on Map Color", 0x00FF00FF)
-	self.S_Menu1_OnMapBackground = self.S_Menu1_Settings:AddBool("JGT_BGColT", "Use a Background Color", true)
-	self.S_Menu1_OnMapBackgroundColor = self.S_Menu1_Settings:AddRGBAMenu("JGT_BGCol", "Background Color", 0x008000FF)
+	-- Start Jungle Timer Menus
+	self.S_Menu1 = M_Menu:AddMenu("JungleTimer")
+	self.S_Menu1_Settings = self.S_Menu1:AddMenu("Jungle Timer Settings")
+	self.S_Menu1_OnMap = self.S_Menu1_Settings:AddBool("Use on the Map", true)
+	self.S_Menu1_OnMapColor = self.S_Menu1_Settings:AddRGBAMenu("Timer Text on Map Color", 0x00FF00FF)
+	self.S_Menu1_OnMapBackground = self.S_Menu1_Settings:AddBool("Use a Background Color", true)
+	self.S_Menu1_OnMapBackgroundColor = self.S_Menu1_Settings:AddRGBAMenu("Background Color", 0x008000FF)
 
-	self.S_Menu1_OnMinimap = self.S_Menu1_Settings:AddBool("JGT_OnMinimap", "Use on the Minimap", true)
-	self.S_Menu1_OnMinimapColor = self.S_Menu1_Settings:AddRGBAMenu("JGT_MiniMapTextCol", "Timer Text on Minimap Color", 0x00FF00FF)
+	self.S_Menu1_OnMinimap = self.S_Menu1_Settings:AddBool("Used on the Minimap", true)
+	self.S_Menu1_OnMinimapColor = self.S_Menu1_Settings:AddRGBAMenu("Timer Text on Minimap Color", 0x00FF00FF)
 
-	self.S_Menu1_Mobs = self.S_Menu1:AddMenu("JGT_MobList", "Jungle Mobs List")
-	self.S_Menu1_JTActive = self.S_Menu1:AddBool("JGT_ToggleTimer", "Activate Jungle Timer", true)
-	self.S_Menu1_Label1 = self.S_Menu1:AddLabel("JGT_ExploitLabel", "An Exploit Included")
+	self.S_Menu1_Mobs = self.S_Menu1:AddMenu("Jungle Mobs List")
+	self.S_Menu1_JTActive = self.S_Menu1:AddBool("Activate Jungle Timer", true)
+	self.S_Menu1_Label1 = self.S_Menu1:AddLabel("An Exploit Included")
 
 	--Add menu for the jungle mobs
 	for i, hash in ipairs(self.JungleTimerTable) do
-		self.JungleMobsData[hash]["b_menu"] = self.S_Menu1_Mobs:AddBool(self.JungleMobsData[hash]["m_name"], self.JungleMobsData[hash]["m_name"], true)
+		self.JungleMobsData[hash]["b_menu"] = self.S_Menu1_Mobs:AddBool(self.JungleMobsData[hash]["m_name"], true)
 	end
 
 	-- End of Jungle Menu Section
@@ -369,14 +369,14 @@ end
 
 function CloneTracker:Menu()
 	-- Start Clone Tracker Menus
-	self.S_Menu2 = M_Menu:AddMenu("CT_Menu", "CloneTracker")
-	self.S_Menu2_Settings = self.S_Menu2:AddMenu("CT_Settings", "Clone Tracker Settings")
-	self.S_Menu2_OnMap = self.S_Menu2_Settings:AddBool("CT_TrackOnMap", "Track Clones", true)
-	self.S_Menu2_OnMapColor = self.S_Menu2_Settings:AddRGBAMenu("CT_MapTextCol", "Clone Tracker on Text Color", 0x000000FF)
-	self.S_Menu2_OnMapBackground = self.S_Menu2_Settings:AddBool("CT_DrawBGCol", "Use a Clone Background Color", true)
-	self.S_Menu2_OnMapBackgroundColor = self.S_Menu2_Settings:AddRGBAMenu("CT_BGCol", "Clone Background Color", 0xDF0101FF)
-	self.S_Menu2_CTActive = self.S_Menu2:AddBool("CT_Toggle", "Activate Clone Tracker", true)
-	self.S_Menu2_Label1 = self.S_Menu2:AddLabel("CT_InfoLabel", "Works on Shaco/Wukong/Leblanc/Neeko")
+	self.S_Menu2 = M_Menu:AddMenu("CloneTracker")
+	self.S_Menu2_Settings = self.S_Menu2:AddMenu("Clone Tracker Settings")
+	self.S_Menu2_OnMap = self.S_Menu2_Settings:AddBool("Track Clones", true)
+	self.S_Menu2_OnMapColor = self.S_Menu2_Settings:AddRGBAMenu("Clone Tracker on Text Color", 0x000000FF)
+	self.S_Menu2_OnMapBackground = self.S_Menu2_Settings:AddBool("Use a Clone Background Color", true)
+	self.S_Menu2_OnMapBackgroundColor = self.S_Menu2_Settings:AddRGBAMenu("Clone Background Color", 0xDF0101FF)
+	self.S_Menu2_CTActive = self.S_Menu2:AddBool("Activate Clone Tracker", true)
+	self.S_Menu2_Label1 = self.S_Menu2:AddLabel("Works on Shaco/Wukong/Leblanc/Neeko")
 	-- End of Clone Tracker Section
 end
 
@@ -488,18 +488,18 @@ function InhibitorsTimer:Init()
 end
 
 function InhibitorsTimer:Menu()
-	self.S_Menu = M_Menu:AddMenu("IT_Menu", "InhibitorsTimer")
-	self.S_Menu_Settings = self.S_Menu:AddMenu("IT_Settings", "Inhibitors Timer Settings")
-	self.S_Menu_OnMap = self.S_Menu_Settings:AddBool("IT_TimerText", "Use a Inhibitors Timer Text", true)
-	self.S_Menu_OnMapColor = self.S_Menu_Settings:AddRGBAMenu("IT_TextCol", "Inhibitors Timer Text Color", 0x000000FF)
-	self.S_Menu_OnMapBackground = self.S_Menu_Settings:AddBool("IT_BGToggle", "Use a Inhibitors Timer Background", true)
-	self.S_Menu_OnMapBackgroundColor = self.S_Menu_Settings:AddRGBAMenu("IT_BGCol", "Inhibitors Timer Background Color", 0xDF0101FF)
-	self.S_Menu_OnMinimap = self.S_Menu_Settings:AddBool("IT_MapToggle", "Use a Inhibitors Timer Minimap", false)
-	self.S_Menu_OnMinimapColor = self.S_Menu_Settings:AddRGBAMenu("IT_MapCol", "Inhibitors Timer Minimap Color", 0x00FF00FF)
+	self.S_Menu = M_Menu:AddMenu("InhibitorsTimer")
+	self.S_Menu_Settings = self.S_Menu:AddMenu("Inhibitors Timer Settings")
+	self.S_Menu_OnMap = self.S_Menu_Settings:AddBool("Use a Inhibitors Timer Text", true)
+	self.S_Menu_OnMapColor = self.S_Menu_Settings:AddRGBAMenu("Inhibitors Timer Text Color", 0x000000FF)
+	self.S_Menu_OnMapBackground = self.S_Menu_Settings:AddBool("Use a Inhibitors Timer Background", true)
+	self.S_Menu_OnMapBackgroundColor = self.S_Menu_Settings:AddRGBAMenu("Inhibitors Timer Background Color", 0xDF0101FF)
+	self.S_Menu_OnMinimap = self.S_Menu_Settings:AddBool("Use a Inhibitors Timer Minimap", false)
+	self.S_Menu_OnMinimapColor = self.S_Menu_Settings:AddRGBAMenu("Inhibitors Timer Minimap Color", 0x00FF00FF)
 	-- TODO Maybe I gotta add them later
 	--self.S_Menu_AllyActive = self.S_Menu:AddBool("Track Ally Inhibitors Timer", true)
 	--self.S_Menu_EnemyActive = self.S_Menu:AddBool("Track Enemy Inhibitors Timer", true)
-	self.S_Menu_Active = self.S_Menu:AddBool("IT_Toggle", "Activate Inhibitors Timer", true)
+	self.S_Menu_Active = self.S_Menu:AddBool("Activate Inhibitors Timer", true)
 end
 
 function InhibitorsTimer:OnDelete(obj)
@@ -561,92 +561,6 @@ function InhibitorsTimer:OnDraw()
 		end
 	end
 end
-
-function DragonBaronTracker:Init()
-	
-	--[[
-		IsDragon: 1 - Dragon, 2 - Baron
-		IsAttacking: 1 - Attacking, 2 - Resetting, 3 - Dead
-	]]
-	self.DragonBaronTable = {
-		["SRU_Dragon_Spawn_Praxis.troy"] = {IsDragon = 1, IsAttacking = 1},
-		["SRU_Dragon_idle1_landing_sound.troy"] = {IsDragon = 1, IsAttacking = 2},
-		["SRU_Dragon_death_sound.troy"] = {IsDragon = 1, IsAttacking = 3},
-		["SRU_Baron_Base_BA1_tar.troy"] = {IsDragon = 2, IsAttacking = 1},
-		["SRU_Baron_death_sound.troy"] = {IsDragon = 2, IsAttacking = 3}
-	}
-
-	self.DragonBaronStatus = {2, 2}
-	local playerResolution = Renderer.GetResolution()
-	self.AlertPosition = Vector(math.floor(playerResolution.x) / 2.0 - 80.0, math.floor(playerResolution.y) / 6.0, 0)
-	self.AlertRectPosition = self.AlertPosition - Vector(15, 0, 0)
-	self.BaronAlertPosition = self.AlertPosition - Vector(0, 20, 0)
-	self.BaronRectAlertPosition = self.BaronAlertPosition - Vector(15, 0, 0)
-	self.BaronActiveStatus = Game.GetTime()
-	self.TextClipper = Vector(200, 15, 0)
-
-	DragonBaronTracker:Menu()
-	
-end
-
-function DragonBaronTracker:Menu()
-	self.S_Menu = M_Menu:AddMenu("DBTracker", "DragonBaronTracker")
-	self.S_Menu_Settings = self.S_Menu:AddMenu("DBT_Settings", "Dragon Baron Tracker Settings")
-	self.S_Menu_Dragon = self.S_Menu_Settings:AddBool("DBT_DragonToggle", "Track Dragon", true)
-	self.S_Menu_DragonColor = self.S_Menu_Settings:AddRGBAMenu("DBT_DragonTextCol", "Dragon Tracker Text Color", 0x000000FF)
-	self.S_Menu_DragonBackground = self.S_Menu_Settings:AddBool("DBT_DragonBGToggle", "Use a Dragon Tracker Background", true)
-	self.S_Menu_DragonBackgroundColor = self.S_Menu_Settings:AddRGBAMenu("DBT_DragonBGCol", "Dragon Tracker Background Color", 0xCC6600FF)
-
-	self.S_Menu_Baron = self.S_Menu_Settings:AddBool("DBT_BaronToggle", "Track Baron", true)
-	self.S_Menu_BaronColor = self.S_Menu_Settings:AddRGBAMenu("DBT_BaronTextCol", "Baron Tracker Text Color", 0x000000FF)
-	self.S_Menu_BaronBackground = self.S_Menu_Settings:AddBool("DBT_BaronBGToggle", "Use a Baron Tracker Background", true)
-	self.S_Menu_BaronBackgroundColor = self.S_Menu_Settings:AddRGBAMenu("DBT_BaronBGCol", "Baron Tracker Background Color", 0x990099FF)
-
-	self.S_Menu_Active = self.S_Menu:AddBool("DBT_Toggle", "Activate Dragon Baron Tracker", true)
-	self.S_Menu_Label1 = self.S_Menu:AddLabel("DBT_ExploitLabel", "The Exploit Works on Fog of War")
-
-end
-
-function DragonBaronTracker:OnDelete(obj)
-	if (self.S_Menu_Active.Value and obj) then
-		local objName = obj.Name
-		if (objName and self.DragonBaronTable[objName]) then
-			self.DragonBaronStatus[self.DragonBaronTable[objName].IsDragon] = self.DragonBaronTable[objName].IsAttacking
-			-- only baron
-			if (self.DragonBaronTable[objName].IsDragon == 2 and self.DragonBaronTable[objName].IsAttacking ~= 3) then
-				self.BaronActiveStatus = Game.GetTime() + 2
-				delay(
-					3000,
-					function()
-						if (Game.GetTime() >= self.BaronActiveStatus) then
-							self.DragonBaronStatus[self.DragonBaronTable[objName].IsDragon] = 2
-						end
-					end
-				)
-			end
-		end
-	end
-end
-
-function DragonBaronTracker:OnDraw()
-
-	if( not self.S_Menu_Active.Value ) then
-		return
-	end
-
-	-- Maybe I can reduce below lines later..
-	if (self.S_Menu_Dragon.Value and self.DragonBaronStatus[1] == 1) then
-		Renderer.DrawFilledRect(self.AlertRectPosition, self.TextClipper, 2, self.S_Menu_DragonBackgroundColor.Value)
-		Renderer.DrawText(self.AlertPosition, self.TextClipper, "DRAGON IS BEING ATTACKED", self.S_Menu_DragonColor.Value)
-	end
-
-	if (self.S_Menu_Baron.Value and self.DragonBaronStatus[2] == 1) then
-		Renderer.DrawFilledRect(self.BaronRectAlertPosition, self.TextClipper, 2, self.S_Menu_BaronBackgroundColor.Value)
-		Renderer.DrawText(self.BaronAlertPosition, self.TextClipper, "BARON IS BEING ATTACKED", self.S_Menu_BaronColor.Value)
-	end
-end
-
-
 
 function OnDraw()
 	for i, class in ipairs(T_Classes) do
