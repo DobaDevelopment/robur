@@ -276,14 +276,16 @@ local function TimerStarter(t, objHandle)
 		local objBuffCount = ObjectAI.BuffCount
 		for i = 0, objBuffCount do
 			local buff = ObjectAI:GetBuff(i)
-			local buffName = buff.Name
-			if (buff and buffName == this.ObjBuffName) then
-				local hashID = GetHash(ObjectAI.Position.x)
-				if (JungleMobsData[hashID]) then
-					local endTime = buff.StartTime + JungleMobsData[hashID]["respawn_timer"] + 1
-					JungleMobsData[hashID]["saved_time"] = endTime
-					JungleMobsData[hashID]["active"] = true
-					break
+			if (buff) then
+				local buffName = buff.Name
+				if (buffName == this.ObjBuffName) then
+					local hashID = GetHash(ObjectAI.Position.x)
+					if (JungleMobsData[hashID]) then
+						local endTime = buff.StartTime + JungleMobsData[hashID]["respawn_timer"] + 1
+						JungleMobsData[hashID]["saved_time"] = endTime
+						JungleMobsData[hashID]["active"] = true
+						break
+					end
 				end
 			end
 		end
@@ -430,18 +432,18 @@ function InhibitorsTimer:Init()
 	self.InhibitorsTable = {
 		-- Ally Top, Mid, Bot
 		[171] = {
-			IsDestroyed = false, 
-			Position = Vector(1171, 91, 3571), 
+			IsDestroyed = false,
+			Position = Vector(1171, 91, 3571),
 			RespawnTime = 0.0
 		},
 		[203] = {
-			IsDestroyed = false, 
-			Position = Vector(3203, 92, 3208), 
+			IsDestroyed = false,
+			Position = Vector(3203, 92, 3208),
 			RespawnTime = 0.0
 		},
 		[452] = {
-			IsDestroyed = false, 
-			Position = Vector(3452, 89, 1236), 
+			IsDestroyed = false,
+			Position = Vector(3452, 89, 1236),
 			RespawnTime = 0.0
 		},
 		-- Enemy Top, Mid, Bot
@@ -676,7 +678,7 @@ end
 
 function CooldownTracker:Init()
 	self.Heroes = {true, true, true, true, true, true, true, true, true, true}
-	self.StringFormat = "%.f" 
+	self.StringFormat = "%.f"
 	self.EnumColor = {
 		NotLearned = 1,
 		Ready = 2,
@@ -873,7 +875,8 @@ function CooldownTracker:OnTick()
 				local objHero = Heroes[h][2].AsHero
 				if (objHero and objHero.IsValid and objHero.IsVisible and not objHero.IsDead and IsOnScreen(objHero.Position)) then
 					if
-						((objHero.IsMe and this.S_Menu_TrackMe.Value) or (objHero.IsAlly and not objHero.IsMe and this.S_Menu_TrackAlly.Value) or
+						((objHero.IsMe and this.S_Menu_TrackMe.Value) or
+							(objHero.IsAlly and not objHero.IsMe and this.S_Menu_TrackAlly.Value) or
 							(objHero.IsEnemy and this.S_Menu_TrackEnemy.Value))
 					 then
 						for i = SpellSlots.Q, SpellSlots.R do
@@ -890,7 +893,7 @@ function CooldownTracker:OnTick()
 								if (pct) then
 									copySpell[i].PctCooldown = pct
 								end
-								
+
 								if (cd > 0.0) then
 									copySpell[i].Color = self.EnumColor.NotLearned
 									if (cd <= 10.0) then
@@ -958,7 +961,8 @@ function CooldownTracker:OnDraw()
 
 			if (objHero and objHero.IsValid and objHero.IsVisible and not objHero.IsDead and IsOnScreen2D(hpPos)) then
 				if
-					((objHero.IsMe and this.S_Menu_TrackMe.Value) or (objHero.IsAlly and not objHero.IsMe and this.S_Menu_TrackAlly.Value) or
+					((objHero.IsMe and this.S_Menu_TrackMe.Value) or
+						(objHero.IsAlly and not objHero.IsMe and this.S_Menu_TrackAlly.Value) or
 						(objHero.IsEnemy and this.S_Menu_TrackEnemy.Value))
 				 then
 					if (adjustment[1] == 1 and this.S_Menu_Adjust.Value) then
@@ -979,12 +983,7 @@ function CooldownTracker:OnDraw()
 								DrawFilledRect(pos, pctPos, 1, color2)
 								DrawRectOutline(pos, spellBox, 2, 2, this.BoxOutline)
 								pos = pos + Vector(4, 7, 0)
-								DrawText(
-									pos,
-									TextClipper,
-									format(this.StringFormat, copySpell[i].RemainingCooldown),
-									this.TextColor
-								)
+								DrawText(pos, TextClipper, format(this.StringFormat, copySpell[i].RemainingCooldown), this.TextColor)
 							else
 								DrawFilledRect(pos, spellBox, 2, color)
 								DrawRectOutline(pos, spellBox, 2, 2, this.BoxOutline)
@@ -1005,12 +1004,7 @@ function CooldownTracker:OnDraw()
 							local posText = hpPos + Vector(70, -65 + 13 * (i - 1), 0)
 							if (copySpell[i].RemainingCooldown > 0) then
 								DrawFilledRect(pos, ssBox, 2, this.SummonerSpellsStructure[copySpell[i].Name].CDColor)
-								DrawText(
-									posText,
-									TextClipper,
-									format(this.StringFormat, copySpell[i].RemainingCooldown),
-									this.TextColorBlack
-								)
+								DrawText(posText, TextClipper, format(this.StringFormat, copySpell[i].RemainingCooldown), this.TextColorBlack)
 							else
 								DrawFilledRect(pos, ssBox, 2, this.SummonerSpellsStructure[copySpell[i].Name].Color)
 							end
@@ -1076,6 +1070,6 @@ function OnLoad()
 			FeaturedClasses[i]:Init()
 		end
 	end
-	print("[E2Slayer] E2Utility is Loaded - ".. string.format("%.1f", Version))
+	print("[E2Slayer] E2Utility is Loaded - " .. string.format("%.1f", Version))
 	return true
 end
