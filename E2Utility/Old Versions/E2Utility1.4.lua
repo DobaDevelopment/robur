@@ -2,7 +2,7 @@ require("common.log")
 module("E2Utility", package.seeall, log.setup)
 
 local _Core = _G.CoreEx
-local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, Collision, Orbwalker, Prediction =
+local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, Collision =
 	_Core.ObjectManager,
 	_Core.EventManager,
 	_Core.Input,
@@ -11,17 +11,14 @@ local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, 
 	_Core.Geometry,
 	_Core.Renderer,
 	_Core.Geometry.Vector,
-	_G.Libs.CollisionLib,
-	_G.Libs.Orbwalker,
-	_G.Libs.Prediction
-local itemID = require("lol\\Modules\\Common\\itemID")
+	_G.Libs.CollisionLib
 local SpellSlots, SpellStates = Enums.SpellSlots, Enums.SpellStates
 local Player = ObjManager.Player
 
 -- Copied from Mista's scripts :)
 
 -- Verision
-local Version = 1.5
+local Version = 1.4
 
 -- Menu
 local Menu = _G.Libs.Menu:AddMenu("E2Utility", "E2Utility")
@@ -30,13 +27,10 @@ local CloneTracker = {}
 local InhibitorsTimer = {}
 local DragonBaronTracker = {}
 local CooldownTracker = {}
-local Activator = {}
-local TS = {}
 
-local features = 6
-local FeaturedClasses = {JungleTimer, CloneTracker, InhibitorsTimer, DragonBaronTracker, CooldownTracker, Activator}
+local features = 5
+local FeaturedClasses = {JungleTimer, CloneTracker, InhibitorsTimer, DragonBaronTracker, CooldownTracker}
 local TextClipper = Vector(30, 15, 0)
-local TickCount = 0
 
 function JungleTimer:Init()
 	-- A Bool to end Rift timer
@@ -408,7 +402,7 @@ function CloneTracker:OnCreate(objArg)
 			local charName = cloneChamp.CharName
 			if (cloneTracker[charName] and cloneTracker[charName][2] == true) then
 				cloneTracker[charName][1] = cloneChamp
-				this.CloneActiveCount = this.CloneActiveCount + 1
+				self.CloneActiveCount = self.CloneActiveCount + 1
 			end
 		end
 	end
@@ -704,9 +698,8 @@ function CooldownTracker:Init()
 	self.TextColor = 0x00FF00FF
 	self.TextColorBlack = 0x0d0d0dFF
 
-	self.SpellBackground = Vector(104, 5, 0)
-	self.SpellBoxVector = Vector(25, 5, 0)
-	self.SSBoxVector = Vector(30, 12, 0)
+	self.tickCount = 0
+	--FlashPerkHextechFlashtraptionV2
 	self.SummonerSpellsStructure = {
 		["SummonerBarrier"] = {Name = "Barrier", Color = 0xffb833ff, CDColor = 0xbd7b00ff},
 		["SummonerBoost"] = {Name = "Cleanse", Color = 0x33ffffff, CDColor = 0x00bdbdff},
@@ -869,73 +862,78 @@ end
 
 function CooldownTracker:OnTick()
 	local this = self
-	if (this.S_Menu_Active.Value ) then
-		local Heroes = this.Heroes
-		local maxHeroes = self.count
-		local floor = math.floor
-		local IsOnScreen = Renderer.IsOnScreen
-		for h = 1, maxHeroes do
-			local objHero = Heroes[h][2].AsHero
-			if (objHero and objHero.IsValid and objHero.IsVisible and not objHero.IsDead and IsOnScreen(objHero.Position)) then
-				if
-					((objHero.IsMe and this.S_Menu_TrackMe.Value) or
-						(objHero.IsAlly and not objHero.IsMe and this.S_Menu_TrackAlly.Value) or
-						(objHero.IsEnemy and this.S_Menu_TrackEnemy.Value))
-				 then
-					for i = SpellSlots.Q, SpellSlots.R do
-						local copySpell = Heroes[h][1]
+	local tickCount = this.tickCount
+	if (this.S_Menu_Active.Value and tickCount) then
+		local tick = os.clock()
+		if (tickCount < tick) then
+			this.tickCount = tick + 0.4
+			local Heroes = this.Heroes
+			local maxHeroes = self.count
+			local floor = math.floor
+			local IsOnScreen = Renderer.IsOnScreen
+			for h = 1, maxHeroes do
+				local objHero = Heroes[h][2].AsHero
+				if (objHero and objHero.IsValid and objHero.IsVisible and not objHero.IsDead and IsOnScreen(objHero.Position)) then
+					if
+						((objHero.IsMe and this.S_Menu_TrackMe.Value) or
+							(objHero.IsAlly and not objHero.IsMe and this.S_Menu_TrackAlly.Value) or
+							(objHero.IsEnemy and this.S_Menu_TrackEnemy.Value))
+					 then
+						for i = SpellSlots.Q, SpellSlots.R do
+							local copySpell = Heroes[h][1]
 
-						if (copySpell[i].Spell.IsLearned) then
-							copySpell[i].IsLearned = true
-							local cd = copySpell[i].Spell.RemainingCooldown
-							local tcd = copySpell[i].Spell.TotalCooldown
-							copySpell[i].RemainingCooldown = cd
-							-- Got from 48656c6c636174
-							local pct = floor((25 * (1 / tcd)) * cd)
+							if (copySpell[i].Spell.IsLearned) then
+								copySpell[i].IsLearned = true
+								local cd = copySpell[i].Spell.RemainingCooldown
+								local tcd = copySpell[i].Spell.TotalCooldown
+								copySpell[i].RemainingCooldown = cd
+								-- Got from 48656c6c636174
+								local pct = floor((25 * (1 / tcd)) * cd)
 
-							if (pct) then
-								copySpell[i].PctCooldown = pct
-							end
+								if (pct) then
+									copySpell[i].PctCooldown = pct
+								end
 
-							if (cd > 0.0) then
-								copySpell[i].Color = self.EnumColor.NotLearned
-								if (cd <= 10.0) then
-									copySpell[i].Color2 = self.EnumColor.AlmostReady
+								if (cd > 0.0) then
+									copySpell[i].Color = self.EnumColor.NotLearned
+									if (cd <= 10.0) then
+										copySpell[i].Color2 = self.EnumColor.AlmostReady
+									else
+										copySpell[i].Color2 = self.EnumColor.OnCooldown
+									end
 								else
-									copySpell[i].Color2 = self.EnumColor.OnCooldown
+									copySpell[i].Color = self.EnumColor.Ready
+									local mana = objHero.Mana - copySpell[i].Spell.ManaCost
+									if (mana < 0) then
+										copySpell[i].IsEnoughMana = false
+										copySpell[i].Color = self.EnumColor.NoMana
+									else
+										copySpell[i].IsEnoughMana = true
+									end
 								end
 							else
-								copySpell[i].Color = self.EnumColor.Ready
-								local mana = objHero.Mana - copySpell[i].Spell.ManaCost
-								if (mana < 0) then
-									copySpell[i].IsEnoughMana = false
-									copySpell[i].Color = self.EnumColor.NoMana
-								else
-									copySpell[i].IsEnoughMana = true
+								copySpell[i].IsLearned = false
+								copySpell[i].Color = self.EnumColor.NotLearned
+							end
+							Heroes[h][1] = copySpell
+						end
+
+						for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
+							local copySpell = Heroes[h][1]
+							local objHero = Heroes[h][2]
+							local t_spell = objHero:GetSpell(i)
+							if (t_spell) then
+								copySpell[i].Spell = t_spell
+								local cd = t_spell.RemainingCooldown
+								copySpell[i].RemainingCooldown = cd
+								local ssName = t_spell.Name
+								local ss = self.SummonerSpellsStructure[ssName]
+								if (ss) then
+									copySpell[i].Name = ssName
 								end
 							end
-						else
-							copySpell[i].IsLearned = false
-							copySpell[i].Color = self.EnumColor.NotLearned
+							Heroes[h][1] = copySpell
 						end
-						Heroes[h][1] = copySpell
-					end
-
-					for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
-						local copySpell = Heroes[h][1]
-						local objHero = Heroes[h][2]
-						local t_spell = objHero:GetSpell(i)
-						if (t_spell) then
-							copySpell[i].Spell = t_spell
-							local cd = t_spell.RemainingCooldown
-							copySpell[i].RemainingCooldown = cd
-							local ssName = t_spell.Name
-							local ss = self.SummonerSpellsStructure[ssName]
-							if (ss) then
-								copySpell[i].Name = ssName
-							end
-						end
-						Heroes[h][1] = copySpell
 					end
 				end
 			end
@@ -970,34 +968,30 @@ function CooldownTracker:OnDraw()
 					if (adjustment[1] == 1 and this.S_Menu_Adjust.Value) then
 						hpPos = hpPos + adjustment[2]
 					end
-					DrawFilledRect(
-						Vector(hpPos.x - 45, hpPos.y - 2, 0),
-						this.SpellBackground,
-						2,
-						this.ColorList[this.EnumColor.NotLearned]
-					)
-					local SpellBoxVector = this.SpellBoxVector
+					DrawFilledRect(hpPos + Vector(-45, -2, 0), Vector((26 * (4)), 5, 0), 2, this.ColorList[this.EnumColor.NotLearned])
+
+					local spellBox = Vector(25, 5, 0)
 					for i = SpellSlots.Q, SpellSlots.R do
 						local copySpell = Heroes[h][1]
 
 						local color = this.ColorList[copySpell[i].Color]
 						local color2 = this.ColorList[copySpell[i].Color2]
-						local pos = hpPos + Vector(26 * i - 45, -2, 0)
+						local pos = hpPos + Vector(-45 + 26 * (i), -2, 0)
 						if (color and color2) then
 							if (copySpell[i].RemainingCooldown > 0) then
 								local pctPos = Vector(26 - copySpell[i].PctCooldown, 5, 0)
 								DrawFilledRect(pos, pctPos, 1, color2)
-								DrawRectOutline(pos, SpellBoxVector, 2, 2, this.BoxOutline)
-								pos = Vector(pos.x + 4, pos.y + 7, 0)
+								DrawRectOutline(pos, spellBox, 2, 2, this.BoxOutline)
+								pos = pos + Vector(4, 7, 0)
 								DrawText(pos, TextClipper, format(this.StringFormat, copySpell[i].RemainingCooldown), this.TextColor)
 							else
-								DrawFilledRect(pos, SpellBoxVector, 2, color)
-								DrawRectOutline(pos, SpellBoxVector, 2, 2, this.BoxOutline)
+								DrawFilledRect(pos, spellBox, 2, color)
+								DrawRectOutline(pos, spellBox, 2, 2, this.BoxOutline)
 							end
 						end
 					end
 
-					local ssBox = this.SSBoxVector
+					local ssBox = Vector(30, 12, 0)
 					hpPos = objHero.HealthBarScreenPos
 					if (adjustment[1] == 2 and this.S_Menu_Adjust.Value) then
 						hpPos = hpPos + adjustment[2]
@@ -1005,9 +999,9 @@ function CooldownTracker:OnDraw()
 
 					for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
 						local copySpell = Heroes[h][1]
-						local pos = Vector(hpPos.x + 65, 13 * (i - 1) + hpPos.y - 65, 0)
+						local pos = hpPos + Vector(65, -65 + 13 * (i - 1), 0)
 						if (copySpell) then
-							local posText = Vector(hpPos.x + 70, 13 * (i - 1) + hpPos.y - 65, 0)
+							local posText = hpPos + Vector(70, -65 + 13 * (i - 1), 0)
 							if (copySpell[i].RemainingCooldown > 0) then
 								DrawFilledRect(pos, ssBox, 2, this.SummonerSpellsStructure[copySpell[i].Name].CDColor)
 								DrawText(posText, TextClipper, format(this.StringFormat, copySpell[i].RemainingCooldown), this.TextColorBlack)
@@ -1023,164 +1017,11 @@ function CooldownTracker:OnDraw()
 	end
 end
 
-function Activator:Init()
-	self.EnumMode = {"Combo", "Harass"}
-	self.EnumOffensiveType = {
-		Targeted = 1,
-		NonTargeted = 2,
-		Active = 3
-	}
-
-	self.Offensive = {
-		[itemID.HextechGunblade] = {
-			Name = "Hextech Gunblade",
-			Type = self.EnumOffensiveType.Targeted,
-			Range = 700,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "Gunblade",
-			Menu = {}
-		},
-		[itemID.BladeOftheRuinedKing] = {
-			Name = "Blade of the Ruined King",
-			Type = self.EnumOffensiveType.Targeted,
-			Range = 600,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "Botrk",
-			Menu = {}
-		},
-		[itemID.BilgewaterCutlass] = {
-			Name = "Bilgewater Cutlass",
-			Type = self.EnumOffensiveType.Targeted,
-			Range = 600,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "Cutlass",
-			Menu = {}
-		},
-		[itemID.YoumuusGhostblade] = {
-			Name = "Youmuus Ghostblade",
-			Type = self.EnumOffensiveType.Targeted,
-			Range = 600,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "Youmuus",
-			Menu = {}
-		},
-		[itemID.Tiamat] = {
-			Name = "Tiamat",
-			Type = self.EnumOffensiveType.Active,
-			Range = 350,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "Tiamat",
-			Menu = {}
-		},
-		[itemID.RavenousHydra] = {
-			Name = "Ravenous Hydra",
-			Type = self.EnumOffensiveType.Active,
-			Range = 350,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "Ravenous",
-			Menu = {}
-		},
-		[itemID.TitanicHydra] = {
-			Name = "Titanic Hydra",
-			Type = self.EnumOffensiveType.Active,
-			Range = 350,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "Titanic",
-			Menu = {}
-		},
-		[itemID.HextechGLP800] = {
-			Name = "Hextech GLP-800",
-			Type = self.EnumOffensiveType.NonTargeted,
-			Range = 1000,
-			Speed = 2000,
-			Delay = 0.25,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "GLP",
-			Menu = {}
-		},
-		[itemID.HextechProtobelt01] = {
-			Name = "Hextech Protobelt-01",
-			Type = self.EnumOffensiveType.NonTargeted,
-			Range = 400,
-			Speed = 1150,
-			Delay = 0,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "Protobelt",
-			Menu = {}
-		}
-	}
-	Activator:Menu()
-end
-
-function Activator:Menu()
-	local this = self
-	this.S_Menu = Menu:AddMenu("Activator", "Activator")
-	TS = _G.Libs.TargetSelector(this.S_Menu)
-	this.S_Menu_Offensive = this.S_Menu:AddMenu("Offensive", "Offensive")
-	for k, v in pairs(this.Offensive) do
-		v.Menu.Main = this.S_Menu_Offensive:AddMenu(v.MenuName, v.Name)
-		v.Menu.EnemyHealth = v.Menu.Main:AddSlider(v.MenuName .. "EnemyHealth", "Enemy Health %", 0, 100, 1, v.EnemyHealth)
-		v.Menu.MyHealth = v.Menu.Main:AddSlider(v.MenuName .. "MyHealth", "My Health %", 0, 100, 1, v.MyHealth)
-		v.Menu.Active = v.Menu.Main:AddBool(v.MenuName .. "_Toggle", "Active " .. v.Name, true)
-	end
-	this.S_Menu_Focused = this.S_Menu_Offensive:AddBool("FocusedOnly", "Use items on Focused Target ONLY", true)
-end
-
-function Activator:OnTick()
-	local this = self
-
-	if (Orbwalker.GetMode() == this.EnumMode[1]) then
-		local target = TS:GetTarget(1000)
-		if (target == nil) then
-			return
-		end
-		local myhealthpct = Player.Health * (1 / Player.MaxHealth) * 100
-		for k, v in pairs(Player.Items) do
-			local itemslot = k + 6
-			local item = self.Offensive[v.ItemId]
-			if (item and item.Menu.Active.Value and Player:GetSpellState(itemslot) == SpellStates.Ready) then
-				local focusedT = TS:GetForcedTarget()
-				target = TS:GetTarget(item.Range)
-				local focusedCond = (this.S_Menu_Focused.Value and ((focusedT and focusedT == target) or (focusedT == nil))) or not this.S_Menu_Focused.Value
-				if (target and focusedCond) then
-					local targethealthpct = target.Health * (1 / target.MaxHealth) * 100
-					if (myhealthpct <= item.Menu.MyHealth.Value or targethealthpct <= item.Menu.EnemyHealth.Value) then
-						if (item.Type == this.EnumOffensiveType.Targeted) then
-							Input.Cast(itemslot, target)
-						elseif (item.Type == this.EnumOffensiveType.Active) then
-							Input.Cast(itemslot)
-						elseif (item.Type == this.EnumOffensiveType.NonTargeted) then
-							-- Credit to Thron's Ashe
-							local collision = Collision.SearchMinions(Player.Position, target.Position, 30, item.Speed, item.Delay * 1000, 1)
-							if not collision.Result then
-								Input.Cast(itemslot, target.Position)
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-end
-
 function OnTick()
-	local tick = os.clock()
-	if (TickCount < tick) then
-		TickCount = tick + 0.3
-		for i = 1, features do
-			local onTick = FeaturedClasses[i].OnTick
-			if (onTick ~= nil) then
-				FeaturedClasses[i]:OnTick()
-			end
+	for i = 1, features do
+		local onTick = FeaturedClasses[i].OnTick
+		if (onTick ~= nil) then
+			FeaturedClasses[i]:OnTick()
 		end
 	end
 end
