@@ -39,7 +39,7 @@ local PathTracker = {}
 
 local features = 9
 local FeaturedClasses = {JungleTimer, CloneTracker, InhibitorsTimer, DragonBaronTracker, CooldownTracker, Activator, TurnAround, TowerRanges, PathTracker}
-local TextClipper = Vector(55, 15, 0)
+local TextClipper = Vector(30, 15, 0)
 local TickCount = 0
 
 function JungleTimer:Init()
@@ -1301,6 +1301,7 @@ end
 function PathTracker:Init()
 	self.HeroList = {}
 	self.DrawBox = Vector(15,15,0)
+	self.TextClipper = Vector(55, 15, 0)
 	local heroList = ObjManager.Get("all", "heroes")
 	for handle, hero in pairs(heroList) do
 		if(hero) then
@@ -1357,7 +1358,7 @@ function PathTracker:OnDraw()
 					local color = PathTracker.Menu["PT_ETAColor"].Value
 					if(PathTracker.Menu["PT_CharName"].Value) then
 						local drawName = Vector(vEndPos.x -30, vEndPos.y, vEndPos.z):ToScreen()
-						Renderer.DrawText(drawName, TextClipper, charName, color)
+						Renderer.DrawText(drawName, self.TextClipper, charName, color)
 					end
 
 					if(PathTracker.Menu["PT_ETA"].Value) then
@@ -1368,7 +1369,7 @@ function PathTracker:OnDraw()
 							value[2] = 0
 							value[3] = 0
 						else
-							Renderer.DrawText(drawTime, TextClipper, ETAToSeconds(time), color)
+							Renderer.DrawText(drawTime, self.TextClipper, ETAToSeconds(time), color)
 						end
 					end
 				end
