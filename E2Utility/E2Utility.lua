@@ -39,7 +39,7 @@ local PathTracker = {}
 
 local features = 9
 local FeaturedClasses = {JungleTimer, CloneTracker, InhibitorsTimer, DragonBaronTracker, CooldownTracker, Activator, TurnAround, TowerRanges, PathTracker}
-local TextClipper = Vector(30, 15, 0)
+local TextClipper = Vector(55, 15, 0)
 local TickCount = 0
 
 function JungleTimer:Init()
@@ -1259,7 +1259,16 @@ function TurnAround:OnProcessSpell(obj, spellcast)
 end
 
 function TowerRanges:Init()
+	self.Turrets = {}
+	self.FountainTurrets = {["Turret_OrderTurretShrine_A"] = 1350 ,["Turret_ChaosTurretShrine_A"] = 1350}
 	self.TurretList = ObjManager.Get("all", "turrets")
+	for k, turret in pairs(self.TurretList) do
+		local isAlly = turret.IsAlly
+		local isFountain = self.FountainTurrets[turret.Name]
+		if( not isFountain ) then
+			self.Turrets[k] = { turret, isAlly, 855}
+		end
+	end
 	self.MenuStr = "TR"
 	TowerRanges:Menu()
 end
@@ -1278,11 +1287,12 @@ end
 
 function TowerRanges:OnDraw()
 	if ( self.TurretList and TowerRanges.Menu["TR_Toggle"].Value) then
-		for k, turret in pairs(self.TurretList) do
-			local isAlly = turret.IsAlly
+		for k, v in pairs(self.Turrets) do
+			local turret = v[1]
+			local isAlly = v[2]
 			local isTeam = IsTeam(isAlly, TowerRanges, self.MenuStr)
 			if( turret and turret.IsVisible and turret.Position:IsOnScreen() and isTeam) then
-				Renderer.DrawCircle3D(turret.Position, 855, 55, 1, TeamColor(isAlly, TowerRanges, self.MenuStr))
+				Renderer.DrawCircle3D(turret.Position, v[3], 55, 1, TeamColor(isAlly, TowerRanges, self.MenuStr))
 			end
 		end
 	end
