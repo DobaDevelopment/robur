@@ -17,12 +17,11 @@ local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, 
 local itemID = require("lol\\Modules\\Common\\itemID")
 local SpellSlots, SpellStates = Enums.SpellSlots, Enums.SpellStates
 local Player = ObjManager.Player
-local OSClock = os.clock
 
 -- Copied from Mista's scripts :)
 
 -- Verision
-local Version = 1.6
+local Version = 1.5
 
 -- Menu
 local Menu = _G.Libs.Menu:AddMenu("E2Utility", "E2Utility")
@@ -33,12 +32,9 @@ local DragonBaronTracker = {}
 local CooldownTracker = {}
 local Activator = {}
 local TS = {}
-local TurnAround = {}
-local TowerRanges = {}
-local PathTracker = {}
 
-local features = 9
-local FeaturedClasses = {JungleTimer, CloneTracker, InhibitorsTimer, DragonBaronTracker, CooldownTracker, Activator, TurnAround, TowerRanges, PathTracker}
+local features = 6
+local FeaturedClasses = {JungleTimer, CloneTracker, InhibitorsTimer, DragonBaronTracker, CooldownTracker, Activator}
 local TextClipper = Vector(30, 15, 0)
 local TickCount = 0
 
@@ -1176,230 +1172,8 @@ function Activator:OnTick()
 	end
 end
 
-local function IsTeam(IsAlly, this, MenuType)
-	return (this.Menu[MenuType.."_Toggle"].Value) and ( ( IsAlly and this.Menu[MenuType.."_Ally"].Value) or ( not IsAlly and  this.Menu[MenuType.."_Enemy"].Value))
-end
-
-local function TeamColor(isAlly, this, menuType)
-	if( isAlly) then
-		return this.Menu[menuType.."_AllyColor"].Value
-	else
-		return this.Menu[menuType.."_EnemyColor"].Value
-	end
-end
-
-function TurnAround:Init()
-	self.TurnAroundActive = false
-	self.SpellData = {
-		["Cassiopeia"] = { ["CassiopeiaR"] = {Range = 850, PreDelay = 0, PostDealy = 525, Delay = 0.5, FacingFront = false, MoveTo = 100} },
-		["Tryndamere"] = { ["TryndamereW"] = {Range = 850, PreDelay = 100, PostDealy = 425, Delay = 0.3, FacingFront = true, MoveTo = -100} }
-	}
-	local enemyList = ObjManager.Get("enemy", "heroes")
-	for handle, enemy in pairs(enemyList) do
-		if(enemy) then
-			local enemyHero = enemy.AsHero
-			local tr = self.SpellData[enemyHero.CharName]
-			if (tr) then
-				self.TurnAroundActive = true
-				break
-			end
-		end
-	end
-	self.LimitIssueOrder = 0
-	self.OriginalPath = Vector(0,0,0)
-	if( not self.TurnAroundActive ) then
-		EventManager.RemoveCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
-		EventManager.RemoveCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
-	end
-	TurnAround:Menu()
-end
-
-function TurnAround:Menu()
-	TurnAround.Menu = Menu:AddMenu("TA_Menu", "TurnAround")
-	TurnAround.Menu:AddBool("TA_Toggle", "Activate TurnAround", true)
-	TurnAround.Menu:AddLabel("TA_Label", "Cassiopeia/Tryndamere Supported", true)
-end
-
-function TurnAround:OnIssueOrder(Args)
-	if( Args and TurnAround.Menu["TA_Toggle"].Value ) then
-		self.OriginalPath = Args.Position
-		if(self.LimitIssueOrder > OSClock()) then
-			Args.Process = false
-		end
-	end
-end
-
-
-function TurnAround:OnProcessSpell(obj, spellcast)
-	if ( TurnAround.Menu["TA_Toggle"].Value ) then
-		local objHero = obj.AsHero
-		local cond = self.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy 
-		if(cond) then
-			local spell = self.SpellData[objHero.CharName][spellcast.Name]
-			if(objHero and spell) then
-				local condSpell = Player:Distance( objHero.Position) + Player.BoundingRadius <= spell.Range
-				local isFacing = Player:IsFacing(objHero, 120)
-				local condFacing = (isFacing and not spell.FacingFront) or (not isFacing and spell.FacingFront)
-				if ( condSpell and condFacing) then	
-					local overridePos = objHero.Position:Extended(Player.Position, Player.Position:Distance(objHero.Position) + spell.MoveTo)
-					Input.MoveTo(overridePos)
-					Input.MoveTo(overridePos)
-					self.LimitIssueOrder = OSClock() + (spell.Delay)
-					delay(
-						(spell.PostDealy),
-							Input.MoveTo, self.OriginalPath
-					)
-				end
-
-			end
-
-		end
-	end
-	
-end
-
-function TowerRanges:Init()
-	self.TurretList = ObjManager.Get("all", "turrets")
-	self.MenuStr = "TR"
-	TowerRanges:Menu()
-end
-
-
-function TowerRanges:Menu()
-	TowerRanges.Menu = Menu:AddMenu("TR_Menu", "TowerRanges")
-	TowerRanges.Menu:AddBool("TR_Enemy", "Track Enemy Towers", true)
-	TowerRanges.Menu:AddRGBAMenu("TR_EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
-	TowerRanges.Menu:AddBool("TR_Ally", "Track Ally Towers", true)
-	TowerRanges.Menu:AddRGBAMenu("TR_AllyColor", "Ally Tower Range Color", 0x00FF00FF)
-	TowerRanges.Menu:AddBool("TR_Toggle", "Activate Tower Ranges", true)
-	
-end
-
-
-function TowerRanges:OnDraw()
-	if ( self.TurretList and TowerRanges.Menu["TR_Toggle"].Value) then
-		for k, turret in pairs(self.TurretList) do
-			local isAlly = turret.IsAlly
-			local isTeam = IsTeam(isAlly, TowerRanges, self.MenuStr)
-			if( turret and turret.IsVisible and turret.Position:IsOnScreen() and isTeam) then
-				Renderer.DrawCircle3D(turret.Position, 855, 55, 1, TeamColor(isAlly, TowerRanges, self.MenuStr))
-			end
-		end
-	end
-end
-
-function PathTracker:Init()
-	self.HeroList = {}
-	self.DrawBox = Vector(15,15,0)
-	local heroList = ObjManager.Get("all", "heroes")
-	for handle, hero in pairs(heroList) do
-		if(hero) then
-			local ObjHero = hero.AsHero
-			self.HeroList[handle] = {ObjHero, 0,0}
-		end
-	end
-	PathTracker:Menu()
-end
-
-function PathTracker:Menu()
-	PathTracker.Menu = Menu:AddMenu("PT_Menu", "PathTracker")
-	PathTracker.Menu:AddBool("PT_Enemy", "Track Enemy", true)
-	PathTracker.Menu:AddBool("PT_Ally", "Track Ally", false)
-	PathTracker.Menu:AddBool("PT_Waypoints", "Track Waypoints", true)
-	PathTracker.Menu:AddRGBAMenu("PT_WaypointsColor", "WayPoints Color", 0xFFFF00FF)
-	PathTracker.Menu:AddBool("PT_ETA", "Show Estimated Arrival Time", true)
-	PathTracker.Menu:AddBool("PT_CharName", "Show Champion Name", true)
-	PathTracker.Menu:AddRGBAMenu("PT_ETAColor", "ETA/Champ Name Color", 0xFFFFFFFF)
-	PathTracker.Menu:AddRGBAMenu("PT_AllyColor", "ETA Ally Background Color", 0x008000FF)
-	PathTracker.Menu:AddRGBAMenu("PT_EnemyColor", "ETA Enemy Background Color", 0xDF0101FF)
-	PathTracker.Menu:AddBool("PT_Toggle", "Activate Path Tracker", true)
-
-end
-
-local function CalculateETA(dis, MoveSpeed)
-	return ( dis / MoveSpeed )
-end
-
-local function ETAToSeconds( Seconds )
-	return string.format("%02.f", math.floor(Seconds))
-end
-
-
-function PathTracker:OnDraw()
-	if ( PathTracker.Menu["PT_Toggle"].Value ) then
-		for k, value in pairs(self.HeroList) do
-			local v = value[2]
-			local charName = value[1].CharName
-			if ( v ~= 0 and #v.Waypoints > 1 and value[1].IsVisible) then
-				for i=v.CurrentWaypoint, #v.Waypoints-1 do
-					local startPos, endPos = 0, v.Waypoints[i+1]
-					if( i == v.CurrentWaypoint) then
-						startPos = value[1].Position
-					else
-						startPos = v.Waypoints[i]
-					end
-					if (Renderer.IsOnScreen(endPos)) then
-						Renderer.DrawLine3D(startPos, endPos, 1, 0xFFFF00FF)
-					end
-				end
-				local vEndPos = v.EndPos
-				if ( Renderer.IsOnScreen(vEndPos) ) then
-					local color = PathTracker.Menu["PT_ETAColor"].Value
-					if(PathTracker.Menu["PT_CharName"].Value) then
-						local drawName = Vector(vEndPos.x -30, vEndPos.y, vEndPos.z):ToScreen()
-						Renderer.DrawText(drawName, TextClipper, charName, color)
-					end
-
-					if(PathTracker.Menu["PT_ETA"].Value) then
-						local drawTime = Vector(vEndPos.x -10, vEndPos.y - 35, vEndPos.z):ToScreen()
-						Renderer.DrawFilledRect(drawTime, self.DrawBox, 2, TeamColor(value[1].IsAlly, PathTracker, "PT" ))
-						local time = value[3] - os.clock()
-						if( time < 0) then
-							value[2] = 0
-							value[3] = 0
-						else
-							Renderer.DrawText(drawTime, TextClipper, ETAToSeconds(time), color)
-						end
-					end
-				end
-			end
-		end
-	end
-end
-
-function PathTracker:OnNewPath(obj, pathing)
-	if( obj and obj.IsHero and not obj.IsMe and (IsTeam(obj.IsAlly, PathTracker, "PT"))) then
-		local Handle = obj.Handle
-		if (Handle) then
-			local enemy = self.HeroList[Handle]
-			if( enemy ) then
-				self.HeroList[Handle][2] = pathing
-				local ETA = 0.0
-				for i=1, #pathing.Waypoints-1 do
-					local startPos, endPos = pathing.Waypoints[i], pathing.Waypoints[i+1]
-					ETA = ETA + CalculateETA(startPos:Distance(endPos), obj.MoveSpeed)
-				end
-				self.HeroList[Handle][3] = os.clock() + ETA
-			end
-		end
-	end
-end
-
-
-function OnIssueOrder(Args)
-	TurnAround:OnIssueOrder(Args)
-end
-
-function OnProcessSpell(obj, spellcast)
-	TurnAround:OnProcessSpell(obj, spellcast)
-end
-
-function OnNewPath(obj, pathing)
-	PathTracker:OnNewPath(obj, pathing)
-end
-
 function OnTick()
-	local tick = OSClock()
+	local tick = os.clock()
 	if (TickCount < tick) then
 		TickCount = tick + 0.3
 		for i = 1, features do
@@ -1449,9 +1223,6 @@ function OnLoad()
 	EventManager.RegisterCallback(Enums.Events.OnDraw, OnDraw)
 	EventManager.RegisterCallback(Enums.Events.OnCreateObject, OnCreate)
 	EventManager.RegisterCallback(Enums.Events.OnDeleteObject, OnDelete)
-	EventManager.RegisterCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
-	EventManager.RegisterCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
-	EventManager.RegisterCallback(Enums.Events.OnNewPath, OnNewPath)
 	for i = 1, features do
 		local Init = FeaturedClasses[i].Init
 		if (Init ~= nil) then
