@@ -26,6 +26,8 @@ local format = string.format
 -- Verision
 local Version = 1.7
 
+local Profiler =_G.Libs.Profiler
+
 -- Menu
 local Menu = _G.Libs.Menu:AddMenu("E2Utility", "E2Utility")
 local JungleTimer = {}
@@ -1428,12 +1430,15 @@ local function TurnOffBlockMinion()
 	BlockMinion.GetMinion = false
 end
 
+function OnUpdate()
+	BlockMinion:OnUpdate()
+end
+
 local function BlockCondition()
 	local toggle = BlockMinion.Menu["BM_Toggle"].Value
 	local key = BlockMinion.Menu["BM_Key"].Value
 	if (toggle and not key) then
 		TurnOffBlockMinion()
-		EventManager.RemoveCallback(Enums.Events.OnUpdate, OnUpdate)
 		return false
 	end
 	return (toggle and key)
@@ -1462,27 +1467,30 @@ function BlockMinion:OnUpdate()
 	local tick = OSClock()
 	if (self.LocalTick < tick) then
 		self.LocalTick = tick + 0.1
-		if (self.ToggleCondition) then
+		local cond = BlockCondition()
+		if (cond) then
+			local tgminion = self.targetMinion 
 			if (not self.GetMinion) then
-				local tgminion = GetTheClosetMinion()
+				tgminion = GetTheClosetMinion()
 				if (not tgminion) then
 					self.targetMinion = nil
-					self.GetMinion = false
 					return
 				end
 				self.targetMinion = tgminion
 				self.GetMinion = true
 			end
-			if (self.targetMinion) then
-				local minionAI = self.targetMinion.AsAI
-				local direction = minionAI.Direction
-				local isFacing = minionAI:IsFacing(Player, 160)
-				if (not isFacing) then
-					TurnOffBlockMinion()
-				else
-					if (direction and minionAI.Pathing.IsMoving) then
-						local extend = minionAI.Position:Extended(direction, -160)
-						Input.MoveTo(extend)
+			if (tgminion) then
+				local minionAI = tgminion.AsAI
+				if ( minionAI ) then
+					local direction = minionAI.Direction
+					local isFacing = minionAI:IsFacing(Player, 160)
+					if (not isFacing) then
+						TurnOffBlockMinion()
+					else
+						if (direction and minionAI.Pathing.IsMoving) then
+							local extend = minionAI.Position:Extended(direction, -160)
+							Input.MoveTo(extend)
+						end
 					end
 				end
 			end
@@ -1491,21 +1499,23 @@ function BlockMinion:OnUpdate()
 end
 
 function BlockMinion:OnDraw()
-	local cond = BlockCondition()
-	self.ToggleCondition = cond
-	if (cond) then
-		EventManager.RegisterCallback(Enums.Events.OnUpdate, OnUpdate)
-		local color = 0x00FF00FF
-		local str = self.FindingMsg
-		if (self.targetMinion) then
-			local tgMinion = self.targetMinion.AsAI
-			if (tgMinion) then
-				Renderer.DrawCircle3D(tgMinion.Position, tgMinion.BoundingRadius, 33, 1, color)
-				str = self.BlockOnMsg
+	if ( BlockMinion.Menu["BM_Key"].Value ) then
+		local cond = BlockCondition()
+		self.ToggleCondition = cond
+		if (cond) then
+			local color = 0x00FF00FF
+			local str = self.FindingMsg
+			local tg = self.targetMinion
+			if (tg) then
+				local tgMinion = tg.AsAI
+				if (tgMinion) then
+					Renderer.DrawCircle3D(tgMinion.Position, 50, 15, 1, color)
+					str = self.BlockOnMsg
+				end
 			end
+			local adjust = Renderer.WorldToScreen(Player.Position) + Vector(0, 20, 0)
+			Renderer.DrawText(adjust, self.TextClipper, str, color)
 		end
-		local adjust = Renderer.WorldToScreen(Player.Position) + Vector(0, 20, 0)
-		Renderer.DrawText(adjust, self.TextClipper, str, color)
 	end
 end
 
@@ -1521,9 +1531,7 @@ function OnNewPath(obj, pathing)
 	PathTracker:OnNewPath(obj, pathing)
 end
 
-function OnUpdate()
-	BlockMinion:OnUpdate()
-end
+
 
 function OnTick()
 	local tick = OSClock()
@@ -1587,6 +1595,6 @@ function OnLoad()
 	EventManager.RegisterCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
 	EventManager.RegisterCallback(Enums.Events.OnNewPath, OnNewPath)
 
-	print("[E2Slayer] E2Utility is Loaded - " .. string.format("%.1f", Version))
+	print("[E2Slayer] E2Utility is Loaded - " .. format("%.1f", Version))
 	return true
 end
