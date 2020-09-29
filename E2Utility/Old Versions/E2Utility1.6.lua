@@ -18,13 +18,11 @@ local itemID = require("lol\\Modules\\Common\\itemID")
 local SpellSlots, SpellStates = Enums.SpellSlots, Enums.SpellStates
 local Player = ObjManager.Player
 local OSClock = os.clock
-local floor = math.floor
-local format = string.format
 
 -- Copied from Mista's scripts :)
 
 -- Verision
-local Version = 1.7
+local Version = 1.6
 
 -- Menu
 local Menu = _G.Libs.Menu:AddMenu("E2Utility", "E2Utility")
@@ -38,24 +36,11 @@ local TS = {}
 local TurnAround = {}
 local TowerRanges = {}
 local PathTracker = {}
-local BlockMinion = {}
 
-local features = 10
-local FeaturedClasses = {
-	JungleTimer,
-	CloneTracker,
-	InhibitorsTimer,
-	DragonBaronTracker,
-	CooldownTracker,
-	Activator,
-	TurnAround,
-	TowerRanges,
-	PathTracker,
-	BlockMinion
-}
+local features = 9
+local FeaturedClasses = {JungleTimer, CloneTracker, InhibitorsTimer, DragonBaronTracker, CooldownTracker, Activator, TurnAround, TowerRanges, PathTracker}
 local TextClipper = Vector(30, 15, 0)
 local TickCount = 0
-local CurrentClock = 0
 
 function JungleTimer:Init()
 	-- A Bool to end Rift timer
@@ -230,6 +215,8 @@ local function SecondsToClock(seconds)
 		local default = "0:00"
 		return default
 	else
+		local floor = math.floor
+		local format = string.format
 		local hours = floor(seconds * (1 / 3600))
 		local mins = format("%01.f", floor(seconds * (1 / 60) - (hours * 60)))
 		local secs = format("%02.f", floor(seconds - hours * 3600 - mins * 60))
@@ -745,7 +732,6 @@ function CooldownTracker:Init()
 	local AdjustmentRequired = {
 		["Annie"] = {1, Vector(0, 10, 0)},
 		["Jhin"] = {1, Vector(0, 10, 0)},
-		["Pantheon"] = {1, Vector(0, 10, 0)},
 		["Zoe"] = {2, Vector(25, 0, 0)},
 		["Aphelios"] = {2, Vector(52, 0, 0)},
 		["Sylas"] = {2, Vector(28, 0, 0)}
@@ -887,7 +873,7 @@ end
 
 function CooldownTracker:OnTick()
 	local this = self
-	if (this.S_Menu_Active.Value) then
+	if (this.S_Menu_Active.Value ) then
 		local Heroes = this.Heroes
 		local maxHeroes = self.count
 		local floor = math.floor
@@ -1168,9 +1154,7 @@ function Activator:OnTick()
 			if (item and item.Menu.Active.Value and Player:GetSpellState(itemslot) == SpellStates.Ready) then
 				local focusedT = TS:GetForcedTarget()
 				target = TS:GetTarget(item.Range)
-				local focusedCond =
-					(this.S_Menu_Focused.Value and ((focusedT and focusedT == target) or (focusedT == nil))) or
-					not this.S_Menu_Focused.Value
+				local focusedCond = (this.S_Menu_Focused.Value and ((focusedT and focusedT == target) or (focusedT == nil))) or not this.S_Menu_Focused.Value
 				if (target and focusedCond) then
 					local targethealthpct = target.Health * (1 / target.MaxHealth) * 100
 					if (myhealthpct <= item.Menu.MyHealth.Value or targethealthpct <= item.Menu.EnemyHealth.Value) then
@@ -1193,31 +1177,26 @@ function Activator:OnTick()
 end
 
 local function IsTeam(IsAlly, this, MenuType)
-	return (this.Menu[MenuType .. "_Toggle"].Value) and
-		((IsAlly and this.Menu[MenuType .. "_Ally"].Value) or (not IsAlly and this.Menu[MenuType .. "_Enemy"].Value))
+	return (this.Menu[MenuType.."_Toggle"].Value) and ( ( IsAlly and this.Menu[MenuType.."_Ally"].Value) or ( not IsAlly and  this.Menu[MenuType.."_Enemy"].Value))
 end
 
 local function TeamColor(isAlly, this, menuType)
-	if (isAlly) then
-		return this.Menu[menuType .. "_AllyColor"].Value
+	if( isAlly) then
+		return this.Menu[menuType.."_AllyColor"].Value
 	else
-		return this.Menu[menuType .. "_EnemyColor"].Value
+		return this.Menu[menuType.."_EnemyColor"].Value
 	end
 end
 
 function TurnAround:Init()
 	self.TurnAroundActive = false
 	self.SpellData = {
-		["Cassiopeia"] = {
-			["CassiopeiaR"] = {Range = 850, PreDelay = 0, PostDealy = 525, Delay = 0.5, FacingFront = false, MoveTo = 100}
-		},
-		["Tryndamere"] = {
-			["TryndamereW"] = {Range = 850, PreDelay = 100, PostDealy = 425, Delay = 0.3, FacingFront = true, MoveTo = -100}
-		}
+		["Cassiopeia"] = { ["CassiopeiaR"] = {Range = 850, PreDelay = 0, PostDealy = 525, Delay = 0.5, FacingFront = false, MoveTo = 100} },
+		["Tryndamere"] = { ["TryndamereW"] = {Range = 850, PreDelay = 100, PostDealy = 425, Delay = 0.3, FacingFront = true, MoveTo = -100} }
 	}
 	local enemyList = ObjManager.Get("enemy", "heroes")
 	for handle, enemy in pairs(enemyList) do
-		if (enemy) then
+		if(enemy) then
 			local enemyHero = enemy.AsHero
 			local tr = self.SpellData[enemyHero.CharName]
 			if (tr) then
@@ -1227,8 +1206,8 @@ function TurnAround:Init()
 		end
 	end
 	self.LimitIssueOrder = 0
-	self.OriginalPath = Vector(0, 0, 0)
-	if (not self.TurnAroundActive) then
+	self.OriginalPath = Vector(0,0,0)
+	if( not self.TurnAroundActive ) then
 		EventManager.RemoveCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
 		EventManager.RemoveCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
 	end
@@ -1242,51 +1221,58 @@ function TurnAround:Menu()
 end
 
 function TurnAround:OnIssueOrder(Args)
-	if (Args and TurnAround.Menu["TA_Toggle"].Value) then
+	if( Args and TurnAround.Menu["TA_Toggle"].Value ) then
 		self.OriginalPath = Args.Position
-		if (self.LimitIssueOrder > OSClock()) then
+		if(self.LimitIssueOrder > OSClock()) then
 			Args.Process = false
 		end
 	end
 end
 
+
 function TurnAround:OnProcessSpell(obj, spellcast)
-	if (TurnAround.Menu["TA_Toggle"].Value) then
+	if ( TurnAround.Menu["TA_Toggle"].Value ) then
 		local objHero = obj.AsHero
-		local cond = self.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy
-		if (cond) then
+		local cond = self.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy 
+		if(cond) then
 			local spell = self.SpellData[objHero.CharName][spellcast.Name]
-			if (objHero and spell) then
-				local condSpell = Player:Distance(objHero.Position) + Player.BoundingRadius <= spell.Range
+			if(objHero and spell) then
+				local condSpell = Player:Distance( objHero.Position) + Player.BoundingRadius <= spell.Range
 				local isFacing = Player:IsFacing(objHero, 120)
 				local condFacing = (isFacing and not spell.FacingFront) or (not isFacing and spell.FacingFront)
-				if (condSpell and condFacing) then
-					local overridePos =
-						objHero.Position:Extended(Player.Position, Player.Position:Distance(objHero.Position) + spell.MoveTo)
+				if ( condSpell and condFacing) then	
+					local overridePos = objHero.Position:Extended(Player.Position, Player.Position:Distance(objHero.Position) + spell.MoveTo)
 					Input.MoveTo(overridePos)
 					Input.MoveTo(overridePos)
 					self.LimitIssueOrder = OSClock() + (spell.Delay)
-					delay((spell.PostDealy), Input.MoveTo, self.OriginalPath)
+					delay(
+						(spell.PostDealy),
+							Input.MoveTo, self.OriginalPath
+					)
 				end
+
 			end
+
 		end
 	end
+	
 end
 
 function TowerRanges:Init()
 	self.Turrets = {}
-	self.FountainTurrets = {["Turret_OrderTurretShrine_A"] = 1350, ["Turret_ChaosTurretShrine_A"] = 1350}
+	self.FountainTurrets = {["Turret_OrderTurretShrine_A"] = 1350 ,["Turret_ChaosTurretShrine_A"] = 1350}
 	self.TurretList = ObjManager.Get("all", "turrets")
 	for k, turret in pairs(self.TurretList) do
 		local isAlly = turret.IsAlly
 		local isFountain = self.FountainTurrets[turret.Name]
-		if (not isFountain) then
-			self.Turrets[k] = {turret, isAlly, 855}
+		if( not isFountain ) then
+			self.Turrets[k] = { turret, isAlly, 855}
 		end
 	end
 	self.MenuStr = "TR"
 	TowerRanges:Menu()
 end
+
 
 function TowerRanges:Menu()
 	TowerRanges.Menu = Menu:AddMenu("TR_Menu", "TowerRanges")
@@ -1295,15 +1281,17 @@ function TowerRanges:Menu()
 	TowerRanges.Menu:AddBool("TR_Ally", "Track Ally Towers", true)
 	TowerRanges.Menu:AddRGBAMenu("TR_AllyColor", "Ally Tower Range Color", 0x00FF00FF)
 	TowerRanges.Menu:AddBool("TR_Toggle", "Activate Tower Ranges", true)
+	
 end
 
+
 function TowerRanges:OnDraw()
-	if (self.TurretList and TowerRanges.Menu["TR_Toggle"].Value) then
+	if ( self.TurretList and TowerRanges.Menu["TR_Toggle"].Value) then
 		for k, v in pairs(self.Turrets) do
 			local turret = v[1]
 			local isAlly = v[2]
 			local isTeam = IsTeam(isAlly, TowerRanges, self.MenuStr)
-			if (turret and turret.IsVisible and turret.Position:IsOnScreen() and isTeam) then
+			if( turret and turret.IsVisible and turret.Position:IsOnScreen() and isTeam) then
 				Renderer.DrawCircle3D(turret.Position, v[3], 55, 1, TeamColor(isAlly, TowerRanges, self.MenuStr))
 			end
 		end
@@ -1312,13 +1300,13 @@ end
 
 function PathTracker:Init()
 	self.HeroList = {}
-	self.DrawBox = Vector(15, 15, 0)
+	self.DrawBox = Vector(15,15,0)
 	self.TextClipper = Vector(55, 15, 0)
 	local heroList = ObjManager.Get("all", "heroes")
 	for handle, hero in pairs(heroList) do
-		if (hero) then
+		if(hero) then
 			local ObjHero = hero.AsHero
-			self.HeroList[handle] = {ObjHero, 0, 0}
+			self.HeroList[handle] = {ObjHero, 0,0}
 		end
 	end
 	PathTracker:Menu()
@@ -1336,25 +1324,27 @@ function PathTracker:Menu()
 	PathTracker.Menu:AddRGBAMenu("PT_AllyColor", "ETA Ally Background Color", 0x008000FF)
 	PathTracker.Menu:AddRGBAMenu("PT_EnemyColor", "ETA Enemy Background Color", 0xDF0101FF)
 	PathTracker.Menu:AddBool("PT_Toggle", "Activate Path Tracker", true)
+
 end
 
 local function CalculateETA(dis, MoveSpeed)
-	return (dis / MoveSpeed)
+	return ( dis / MoveSpeed )
 end
 
-local function ETAToSeconds(Seconds)
-	return format("%02.f", floor(Seconds))
+local function ETAToSeconds( Seconds )
+	return string.format("%02.f", math.floor(Seconds))
 end
+
 
 function PathTracker:OnDraw()
-	if (PathTracker.Menu["PT_Toggle"].Value) then
+	if ( PathTracker.Menu["PT_Toggle"].Value ) then
 		for k, value in pairs(self.HeroList) do
 			local v = value[2]
 			local charName = value[1].CharName
-			if (v ~= 0 and #v.Waypoints > 1 and value[1].IsVisible) then
-				for i = v.CurrentWaypoint, #v.Waypoints - 1 do
-					local startPos, endPos = 0, v.Waypoints[i + 1]
-					if (i == v.CurrentWaypoint) then
+			if ( v ~= 0 and #v.Waypoints > 1 and value[1].IsVisible) then
+				for i=v.CurrentWaypoint, #v.Waypoints-1 do
+					local startPos, endPos = 0, v.Waypoints[i+1]
+					if( i == v.CurrentWaypoint) then
 						startPos = value[1].Position
 					else
 						startPos = v.Waypoints[i]
@@ -1364,18 +1354,18 @@ function PathTracker:OnDraw()
 					end
 				end
 				local vEndPos = v.EndPos
-				if (Renderer.IsOnScreen(vEndPos)) then
+				if ( Renderer.IsOnScreen(vEndPos) ) then
 					local color = PathTracker.Menu["PT_ETAColor"].Value
-					if (PathTracker.Menu["PT_CharName"].Value) then
-						local drawName = Vector(vEndPos.x - 30, vEndPos.y, vEndPos.z):ToScreen()
+					if(PathTracker.Menu["PT_CharName"].Value) then
+						local drawName = Vector(vEndPos.x -30, vEndPos.y, vEndPos.z):ToScreen()
 						Renderer.DrawText(drawName, self.TextClipper, charName, color)
 					end
 
-					if (PathTracker.Menu["PT_ETA"].Value) then
-						local drawTime = Vector(vEndPos.x - 10, vEndPos.y - 35, vEndPos.z):ToScreen()
-						Renderer.DrawFilledRect(drawTime, self.DrawBox, 2, TeamColor(value[1].IsAlly, PathTracker, "PT"))
+					if(PathTracker.Menu["PT_ETA"].Value) then
+						local drawTime = Vector(vEndPos.x -10, vEndPos.y - 35, vEndPos.z):ToScreen()
+						Renderer.DrawFilledRect(drawTime, self.DrawBox, 2, TeamColor(value[1].IsAlly, PathTracker, "PT" ))
 						local time = value[3] - os.clock()
-						if (time < 0) then
+						if( time < 0) then
 							value[2] = 0
 							value[3] = 0
 						else
@@ -1389,125 +1379,23 @@ function PathTracker:OnDraw()
 end
 
 function PathTracker:OnNewPath(obj, pathing)
-	if (obj and obj.IsHero and not obj.IsMe and (IsTeam(obj.IsAlly, PathTracker, "PT"))) then
+	if( obj and obj.IsHero and not obj.IsMe and (IsTeam(obj.IsAlly, PathTracker, "PT"))) then
 		local Handle = obj.Handle
 		if (Handle) then
 			local enemy = self.HeroList[Handle]
-			if (enemy) then
+			if( enemy ) then
 				self.HeroList[Handle][2] = pathing
 				local ETA = 0.0
-				for i = 1, #pathing.Waypoints - 1 do
-					local startPos, endPos = pathing.Waypoints[i], pathing.Waypoints[i + 1]
+				for i=1, #pathing.Waypoints-1 do
+					local startPos, endPos = pathing.Waypoints[i], pathing.Waypoints[i+1]
 					ETA = ETA + CalculateETA(startPos:Distance(endPos), obj.MoveSpeed)
 				end
-				self.HeroList[Handle][3] = OSClock() + ETA
+				self.HeroList[Handle][3] = os.clock() + ETA
 			end
 		end
 	end
 end
 
-function BlockMinion:Init()
-	self.TargetMinion = nil
-	self.GetMinion = false
-	self.ToggleCondition = false
-	self.BlockOnMsg = "Blocking ON"
-	self.FindingMsg = "Fidning a Minion.."
-	self.TextClipper = Vector(150, 15, 0)
-	self.LocalTick = 0
-	BlockMinion:Menu()
-end
-
-function BlockMinion:Menu()
-	BlockMinion.Menu = Menu:AddMenu("BM_Menu", "BlockMinion")
-	BlockMinion.Menu:AddBool("BM_Toggle", "Activate Block Minion", true)
-	BlockMinion.Menu:AddKeyBind("BM_Key", "Blocking Key", 90) -- 90 is Z
-end
-
-local function TurnOffBlockMinion()
-	BlockMinion.targetMinion = nil
-	BlockMinion.GetMinion = false
-end
-
-local function BlockCondition()
-	local toggle = BlockMinion.Menu["BM_Toggle"].Value
-	local key = BlockMinion.Menu["BM_Key"].Value
-	if (toggle and not key) then
-		TurnOffBlockMinion()
-		EventManager.RemoveCallback(Enums.Events.OnUpdate, OnUpdate)
-		return false
-	end
-	return (toggle and key)
-end
-
-local function GetTheClosetMinion()
-	local closetMinion = nil
-	local minionList = ObjManager.Get("ally", "minions")
-	local mindis = 500
-	for handle, minion in pairs(minionList) do
-		local distance = Player:Distance(minion)
-		local minionAI = minion.AsAI
-		local isFacing = minionAI:IsFacing(Player, 120)
-		if (minionAI and distance < mindis and isFacing) then
-			local direction = minionAI.Direction
-			if (direction) then
-				closetMinion = minion
-				mindis = distance
-			end
-		end
-	end
-	return closetMinion
-end
-
-function BlockMinion:OnUpdate()
-	local tick = OSClock()
-	if (self.LocalTick < tick) then
-		self.LocalTick = tick + 0.1
-		if (self.ToggleCondition) then
-			if (not self.GetMinion) then
-				local tgminion = GetTheClosetMinion()
-				if (not tgminion) then
-					self.targetMinion = nil
-					self.GetMinion = false
-					return
-				end
-				self.targetMinion = tgminion
-				self.GetMinion = true
-			end
-			if (self.targetMinion) then
-				local minionAI = self.targetMinion.AsAI
-				local direction = minionAI.Direction
-				local isFacing = minionAI:IsFacing(Player, 160)
-				if (not isFacing) then
-					TurnOffBlockMinion()
-				else
-					if (direction and minionAI.Pathing.IsMoving) then
-						local extend = minionAI.Position:Extended(direction, -160)
-						Input.MoveTo(extend)
-					end
-				end
-			end
-		end
-	end
-end
-
-function BlockMinion:OnDraw()
-	local cond = BlockCondition()
-	self.ToggleCondition = cond
-	if (cond) then
-		EventManager.RegisterCallback(Enums.Events.OnUpdate, OnUpdate)
-		local color = 0x00FF00FF
-		local str = self.FindingMsg
-		if (self.targetMinion) then
-			local tgMinion = self.targetMinion.AsAI
-			if (tgMinion) then
-				Renderer.DrawCircle3D(tgMinion.Position, tgMinion.BoundingRadius, 33, 1, color)
-				str = self.BlockOnMsg
-			end
-		end
-		local adjust = Renderer.WorldToScreen(Player.Position) + Vector(0, 20, 0)
-		Renderer.DrawText(adjust, self.TextClipper, str, color)
-	end
-end
 
 function OnIssueOrder(Args)
 	TurnAround:OnIssueOrder(Args)
@@ -1519,10 +1407,6 @@ end
 
 function OnNewPath(obj, pathing)
 	PathTracker:OnNewPath(obj, pathing)
-end
-
-function OnUpdate()
-	BlockMinion:OnUpdate()
 end
 
 function OnTick()
@@ -1572,13 +1456,6 @@ function OnDelete(obj)
 end
 
 function OnLoad()
-	for i = 1, features do
-		local Init = FeaturedClasses[i].Init
-		if (Init ~= nil) then
-			FeaturedClasses[i]:Init()
-		end
-	end
-	EventManager.RegisterCallback(Enums.Events.OnUpdate, OnUpdate)
 	EventManager.RegisterCallback(Enums.Events.OnTick, OnTick)
 	EventManager.RegisterCallback(Enums.Events.OnDraw, OnDraw)
 	EventManager.RegisterCallback(Enums.Events.OnCreateObject, OnCreate)
@@ -1586,7 +1463,12 @@ function OnLoad()
 	EventManager.RegisterCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
 	EventManager.RegisterCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
 	EventManager.RegisterCallback(Enums.Events.OnNewPath, OnNewPath)
-
+	for i = 1, features do
+		local Init = FeaturedClasses[i].Init
+		if (Init ~= nil) then
+			FeaturedClasses[i]:Init()
+		end
+	end
 	print("[E2Slayer] E2Utility is Loaded - " .. string.format("%.1f", Version))
 	return true
 end
