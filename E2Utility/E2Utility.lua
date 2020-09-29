@@ -52,8 +52,7 @@ local FeaturedClasses = {
 	Activator,
 	TurnAround,
 	TowerRanges,
-	PathTracker,
-	BlockMinion
+	PathTracker
 }
 local TextClipper = Vector(30, 15, 0)
 local TickCount = 0
