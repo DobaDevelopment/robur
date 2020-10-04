@@ -2,7 +2,7 @@ require("common.log")
 module("E2Utility", package.seeall, log.setup)
 
 local _Core = _G.CoreEx
-local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, Collision, Orbwalker, Prediction, Nav =
+local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, Collision, Orbwalker, Prediction =
 	_Core.ObjectManager,
 	_Core.EventManager,
 	_Core.Input,
@@ -13,8 +13,7 @@ local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, 
 	_Core.Geometry.Vector,
 	_G.Libs.CollisionLib,
 	_G.Libs.Orbwalker,
-	_G.Libs.Prediction,
-	_G.CoreEx.Nav
+	_G.Libs.Prediction
 local itemID = require("lol\\Modules\\Common\\itemID")
 local SpellSlots, SpellStates = Enums.SpellSlots, Enums.SpellStates
 local Player = ObjManager.Player
@@ -26,7 +25,7 @@ local format = string.format
 -- Copied from Mista's scripts :)
 
 -- Verision
-local Version = 1.9
+local Version = 1.8
 
 local Profiler = _G.Libs.Profiler
 
@@ -43,7 +42,6 @@ local TurnAround = {}
 local TowerRanges = {}
 local PathTracker = {}
 local BlockMinion = {}
-local SSUtility = {}
 
 local FeaturedClasses = {
 	JungleTimer,
@@ -55,8 +53,7 @@ local FeaturedClasses = {
 	TurnAround,
 	TowerRanges,
 	PathTracker,
-	BlockMinion,
-	SSUtility
+	BlockMinion
 }
 local TextClipper = Vector(30, 15, 0)
 local TickCount = 0
@@ -67,12 +64,20 @@ local function GetHash(arg)
 	return (floor(arg) % 1000)
 end
 
--- Creadit to Thorn
+-- Credit to jesseadams - https://gist.github.com/jesseadams/791673
 ---@param seconds number(float)
 ---@return string 
 local function SecondsToClock(seconds)
-	local m, s = floor(seconds/60), floor(seconds%60)
-	return m..":"..(s < 10 and 0 or "")..s
+	if seconds <= 0 then
+		local default = "0:00"
+		return default
+	else
+		local hours = floor(seconds * 0.00027777777) -- 1/3600
+		local mins = format("%01.f", floor(seconds * 0.01666666666 - (hours * 60))) -- 1/60
+		local secs = format("%02.f", floor(seconds - hours * 3600 - mins * 60))
+		local str = mins .. ":" .. secs
+		return str
+	end
 end
 
 --[[
@@ -83,12 +88,12 @@ end
     █████   ██████  ██   ████  ██████  ███████ ███████        ██    ██ ██      ██ ███████ ██   ██                                                                                                                                                                                          
 ]]
 
-function JungleTimer.Init()
+function JungleTimer:Init()
 	-- A Bool to end Rift timer
-	JungleTimer.RiftOver = false
-	JungleTimer.TotalCamps = 16
-	JungleTimer.ObjName = { ["CampRespawn"] = true }
-	JungleTimer.ObjBuffNameSTR = "camprespawncountdownhidden"
+	self.RiftOver = false
+	self.TotalCamps = 16
+	self.ObjName = { ["CampRespawn"] = true }
+	self.ObjBuffName = { ["camprespawncountdownhidden"] = true}
 	-- [id] hashtable ID
 	-- ["m_name"] Name for the menu
 	-- ["position"] Position for the jungle mob
@@ -98,7 +103,7 @@ function JungleTimer.Init()
 	-- ["active"] Active status for the current jungle mob
 	-- ["b_menu"] Menu boolean value (Deleted)
 	local emptyVector = Vector(0, 0, 0)
-	JungleTimer.JungleMobsData = {
+	self.JungleMobsData = {
 		[821] = {
 			["m_name"] = "Blue (West)",
 			["position"] = Vector(3821.48, 51.12, 8101.05),
@@ -229,11 +234,11 @@ function JungleTimer.Init()
 		}
 	}
 
-	JungleTimer.JungleTimerTable = {821, 783, 61, 762, 131, 59, 820, 66, 499, 394, 288, 703, 400, 500, 866, 7}
-	JungleTimer.Menu()
+	self.JungleTimerTable = {821, 783, 61, 762, 131, 59, 820, 66, 499, 394, 288, 703, 400, 500, 866, 7}
+	JungleTimer:Menu()
 end
 
-function JungleTimer.Menu()
+function JungleTimer:Menu()
 	JungleTimer.Menu = Menu:AddMenu("JGT_Menu", "JungleTimer")
 	JungleTimer.Menu:AddMenu("JGT_Settings", "Jungle Timer Settings")
 	JungleTimer.Menu.JGT_Settings:AddBool("JGT_DrawMap", "Use on the Map", true)
@@ -247,27 +252,24 @@ function JungleTimer.Menu()
 	JungleTimer.Menu:AddLabel("JGT_ExplainLabel2", "Read the forum for the details")
 end
 
-function JungleTimer.OnDraw()
+function JungleTimer:OnDraw()
 	-- ForLooping only table has at least one element
 	local menu = JungleTimer.Menu
-	if (menu.JGT_ToggleTimer.Value and #JungleTimer.JungleTimerTable > 0 ) then
+	if (menu.JGT_ToggleTimer.Value and #self.JungleTimerTable > 0 ) then
 		local currentGameTime = Game:GetTime()
-		local totalCamps = JungleTimer.TotalCamps
-		local JungleMobsData = JungleTimer.JungleMobsData
+		local totalCamps = self.TotalCamps
+		local JungleMobsData = self.JungleMobsData
 		menu = JungleTimer.Menu.JGT_Settings
-		local drawMap = menu.JGT_DrawMap.Value
-		local drawMapBG = menu.JGT_BGColT.Value
-		local drawMinimap = menu.JGT_OnMinimap.Value
 		for i = 1, totalCamps do
-			local hash = JungleTimer.JungleTimerTable[i]
+			local hash = self.JungleTimerTable[i]
 			if (JungleMobsData[hash]["active"]) then
 				local timeleft = JungleMobsData[hash]["saved_time"] - currentGameTime
 				-- First condition for removing ended timers and the second one for removing rift timer after baron spawned.
 				if (timeleft <= 0) then
 					JungleMobsData[hash]["active"] = false
 				else
-					if (hash == 7 and currentGameTime >= 1200 and JungleTimer.RiftOver == false) then
-						JungleTimer.RiftOver = true
+					if (hash == 7 and currentGameTime >= 1200 and self.RiftOver == false) then
+						self.RiftOver = true
 						JungleMobsData[hash]["active"] = false
 					else
 						-- adjustment vector for correcting position for some jungle mobs
@@ -277,14 +279,14 @@ function JungleTimer.OnDraw()
 						-- draw only pos is on the screen
 						if (Renderer.IsOnScreen(pos)) then
 							local worldPos = Renderer.WorldToScreen(pos)
-							if (drawMap) then
-								if (drawMapBG) then
+							if (menu.JGT_DrawMap.Value) then
+								if (menu.JGT_BGColT.Value) then
 									Renderer.DrawFilledRect(worldPos, TextClipper, 2, menu.JGT_BGCol.Value)
 								end
 								Renderer.DrawText(worldPos, TextClipper, time, menu.JGT_MapTextCol.Value)
 							end
 						end
-						if (drawMinimap) then
+						if (menu.JGT_OnMinimap.Value) then
 							local miniPos = Renderer.WorldToMinimap(pos) + Vector(-10, -10, 0)
 							Renderer.DrawText(miniPos, TextClipper, time, menu.JGT_MiniMapTextCol.Value)
 						end
@@ -295,35 +297,42 @@ function JungleTimer.OnDraw()
 	end
 end
 
-local function TimerStarter(objHandle)
+local function TimerStarter(t, objHandle)
 	local ObjectAI = ObjManager.GetObjectByHandle(objHandle).AsAI
 	if (ObjectAI) then
 		local JungleMobsData = JungleTimer.JungleMobsData
-		local buff = ObjectAI:GetBuff(JungleTimer.ObjBuffNameSTR)
-		if (buff) then
-			local hashID = GetHash(ObjectAI.Position.x)
-			if (JungleMobsData[hashID]) then
-				local endTime = buff.StartTime + JungleMobsData[hashID]["respawn_timer"] + 1
-				JungleMobsData[hashID]["saved_time"] = endTime
-				JungleMobsData[hashID]["active"] = true
+		local objBuffCount = ObjectAI.BuffCount
+		for i = 0, objBuffCount do
+			local buff = ObjectAI:GetBuff(i)
+			if (buff) then
+				local buffName = buff.Name
+				if (JungleTimer.ObjBuffName[buffName] ) then
+					local hashID = GetHash(ObjectAI.Position.x)
+					if (JungleMobsData[hashID]) then
+						local endTime = buff.StartTime + JungleMobsData[hashID]["respawn_timer"] + 1
+						JungleMobsData[hashID]["saved_time"] = endTime
+						JungleMobsData[hashID]["active"] = true
+						break
+					end
+				end
 			end
 		end
 	end
 end
 
-function JungleTimer.OnCreate(obj)
+function JungleTimer:OnCreate(obj)
 	-- Jungle Timer
 	local menu = JungleTimer.Menu
-	if (menu.JGT_ToggleTimer.Value and JungleTimer.ObjName[obj.Name]) then
-		delay(100, TimerStarter, JungleTimer, obj.Handle)
+	if (menu.JGT_ToggleTimer.Value and self.ObjName[obj.Name]) then
+		delay(100, TimerStarter, self, obj.Handle)
 	end
 end
 
-function JungleTimer.OnDelete(obj)
+function JungleTimer:OnDelete(obj)
 	local menu = JungleTimer.Menu
-	if (menu.JGT_ToggleTimer.Value and JungleTimer.ObjName[obj.Name]) then
+	if (menu.JGT_ToggleTimer.Value and self.ObjName[obj.Name]) then
 		local hashID = GetHash(obj.AsAI.Position.x)
-		local target = JungleTimer.JungleMobsData[hashID]
+		local target = self.JungleMobsData[hashID]
 		if (target) then
 			target["saved_time"] = -1
 			target["active"] = false
@@ -340,21 +349,21 @@ end
 	 ██████ ███████  ██████  ██   ████ ███████        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                      
 ]]
 
-function CloneTracker.Init()
+function CloneTracker:Init()
 	-- Clone Tracker Variables
-	CloneTracker.CloneEnum = {}
-	CloneTracker.CloneEnumCount = 1
-	CloneTracker.CloneActiveCount = 0
-	CloneTracker.CloneAdjustment = Vector(-15, -50, 0)
+	self.CloneEnum = {}
+	self.CloneEnumCount = 1
+	self.CloneActiveCount = 0
+	self.CloneAdjustment = Vector(-15, -50, 0)
 	local tableTemplate = {nil, false}
-	CloneTracker.CloneTrackerList = {
+	self.CloneTrackerList = {
 		["Shaco"] = tableTemplate,
 		["Leblanc"] = tableTemplate,
 		["MonkeyKing"] = tableTemplate,
 		["Neeko"] = tableTemplate
 	}
-	CloneTracker.Text = "CLONE"
-	CloneTracker.TextRectVec = Vector(36, 15, 0)
+	self.Text = "CLONE"
+	self.TextRectVec = Vector(36, 15, 0)
 	-- End of Clone Tracker Variables
 
 	local enemyList = ObjManager.Get("enemy", "heroes")
@@ -363,31 +372,31 @@ function CloneTracker.Init()
 		if (enemy and enemy.IsAI) then
 			local cloneChamp = enemy.AsAI
 			local charName = cloneChamp.CharName
-			if (CloneTracker.CloneTrackerList[charName]) then
-				CloneTracker.CloneTrackerList[charName] = template
-				CloneTracker.CloneEnum[CloneTracker.CloneEnumCount] = charName
-				CloneTracker.CloneEnumCount = CloneTracker.CloneEnumCount + 1
+			if (self.CloneTrackerList[charName]) then
+				self.CloneTrackerList[charName] = template
+				self.CloneEnum[self.CloneEnumCount] = charName
+				self.CloneEnumCount = self.CloneEnumCount + 1
 			end
 		end
 	end
 
-	if (CloneTracker.CloneEnumCount < 1) then
+	if (self.CloneEnumCount < 1) then
 		CloneTracker.OnDraw = nil
 		CloneTracker.OnCreate = nil
 		CloneTracker.OnDelete = nil
-		CloneTracker.CloneEnum = nil
-		CloneTracker.CloneEnumCount = nil
-		CloneTracker.CloneActiveCount = nil
-		CloneTracker.CloneAdjustment = nil
-		CloneTracker.CloneTrackerList = nil
-		CloneTracker.Text = nil
-		CloneTracker.TextRectVec = nil
+		self.CloneEnum = nil
+		self.CloneEnumCount = nil
+		self.CloneActiveCount = nil
+		self.CloneAdjustment = nil
+		self.CloneTrackerList = nil
+		self.Text = nil
+		self.TextRectVec = nil
 	end
 
-	CloneTracker.Menu()
+	CloneTracker:Menu()
 end
 
-function CloneTracker.Menu()
+function CloneTracker:Menu()
 	-- Start Clone Tracker Menus
 	CloneTracker.Menu = Menu:AddMenu("CT_Menu", "CloneTracker")
 	CloneTracker.Menu:AddMenu("CT_Settings", "CloneTracker")
@@ -400,27 +409,23 @@ function CloneTracker.Menu()
 	-- End of Clone Tracker Section
 end
 
-function CloneTracker.OnDraw()
+function CloneTracker:OnDraw()
 	local menu = CloneTracker.Menu
-	if (menu.CT_Toggle.Value and CloneTracker.CloneActiveCount > 0) then
-		local enumCount = CloneTracker.CloneEnumCount - 1
-		local cloneTracker = CloneTracker.CloneTrackerList
-		menu = CloneTracker.Menu.CT_Settings
-		local drawBG = menu.CT_DrawBGCol.Value
-		local drawBGColor = menu.CT_BGCol.Value
-		local trackmap = menu.CT_TrackOnMap.Value
-		local trackmapColor = menu.CT_MapTextCol.Value
+	if (menu.CT_Toggle.Value and self.CloneActiveCount > 0) then
+		local enumCount = self.CloneEnumCount - 1
+		local cloneTracker = self.CloneTrackerList
 		for i = 1, enumCount do
-			local charName = CloneTracker.CloneEnum[i]
+			local charName = self.CloneEnum[i]
 			if (cloneTracker[charName][1] and cloneTracker[charName][2] == true) then
 				local pos = cloneTracker[charName][1].Position
+				menu = CloneTracker.Menu.CT_Settings
 				if (Renderer.IsOnScreen(pos)) then
-					local posw2s = Renderer.WorldToScreen(pos) + CloneTracker.CloneAdjustment
-					if (drawBG) then
-						Renderer.DrawFilledRect(posw2s, CloneTracker.TextRectVec, 2, drawBGColor)
+					local posw2s = Renderer.WorldToScreen(pos) + self.CloneAdjustment
+					if (menu.CT_DrawBGCol.Value) then
+						Renderer.DrawFilledRect(posw2s, self.TextRectVec, 2, menu.CT_BGCol.Value)
 					end
-					if (trackmap) then
-						Renderer.DrawText(posw2s, TextClipper, CloneTracker.Text, trackmapColor)
+					if (menu.CT_TrackOnMap.Value) then
+						Renderer.DrawText(posw2s, TextClipper, self.Text, menu.CT_MapTextCol.Value)
 					end
 				end
 			end
@@ -428,34 +433,34 @@ function CloneTracker.OnDraw()
 	end
 end
 
-function CloneTracker.OnCreate(obj)
+function CloneTracker:OnCreate(obj)
 	local menu = CloneTracker.Menu
 	if (menu.CT_Toggle.Value and obj.IsAI) then
 		local cloneChamp = obj.AsAI
 		if (cloneChamp ~= nil and cloneChamp.IsValid) then
-			local cloneTracker = CloneTracker.CloneTrackerList
+			local cloneTracker = self.CloneTrackerList
 			local charName = cloneChamp.CharName
 			if (cloneTracker[charName] and cloneTracker[charName][2] == true) then
 				cloneTracker[charName][1] = cloneChamp
-				CloneTracker.CloneActiveCount = CloneTracker.CloneActiveCount + 1
+				self.CloneActiveCount = self.CloneActiveCount + 1
 			end
 		end
 	end
 end
 
-function CloneTracker.OnDelete(obj)
+function CloneTracker:OnDelete(obj)
 	local menu = CloneTracker.Menu
 	if (menu.CT_Toggle.Value and obj.IsAI) then
 		local cloneChamp = obj.AsAI
 		if (cloneChamp and cloneChamp.IsValid) then
-			local cloneTracker = CloneTracker.CloneTrackerList
+			local cloneTracker = self.CloneTrackerList
 			local charName = cloneChamp.CharName
 			if (cloneTracker[charName] and cloneTracker[charName][2] == true) then
 				cloneTracker[charName][1] = nil
 				-- Decrease the count only greater than 0
-				local activeCount = CloneTracker.CloneActiveCount
+				local activeCount = self.CloneActiveCount
 				if (activeCount > 0) then
-					CloneTracker.CloneActiveCount = activeCount - 1
+					self.CloneActiveCount = activeCount - 1
 				end
 			end
 		end
@@ -471,8 +476,8 @@ end
 	██ ██   ████ ██   ██ ██ ██████  ██    ██     ██████  ██   ██ ███████        ██    ██ ██      ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                     
 ]]
 
-function InhibitorsTimer.Init()
-	InhibitorsTimer.InhibitorsTable = {
+function InhibitorsTimer:Init()
+	self.InhibitorsTable = {
 		-- Blue Top, Mid, Bot
 		[171] = {
 			IsDestroyed = false,
@@ -506,12 +511,12 @@ function InhibitorsTimer.Init()
 			RespawnTime = 0.0
 		}
 	}
-	InhibitorsTimer.InhibitorsEnum = {171, 203, 452, 261, 598, 604}
-	InhibitorsTimer.Inhibitors = 6
-	InhibitorsTimer.DestroyedInhibitors = 0
-	InhibitorsTimer.ConstRespawnTime = 300.0
+	self.InhibitorsEnum = {171, 203, 452, 261, 598, 604}
+	self.Inhibitors = 6
+	self.DestroyedInhibitors = 0
+	self.ConstRespawnTime = 300.0
 
-	InhibitorsTimer.RespawnComparor = {
+	self.RespawnComparor = {
 		["SRUAP_Chaos_Inhibitor_Spawn_sound.troy"] = {Destroy = false},
 		["SRUAP_Order_Inhibitor_Spawn_sound.troy"] = {Destroy = false},
 		["SRUAP_Chaos_Inhibitor_Idle1_soundy.troy"] = {Destroy = true},
@@ -523,15 +528,15 @@ function InhibitorsTimer.Init()
 		local objAT = obj.AsAttackableUnit
 		if (obj and obj.IsValid and objAT.Health <= 0.0) then
 			local hash = GetHash(obj.Position.x)
-			InhibitorsTimer.InhibitorsTable[hash].IsDestroyed = true
-			InhibitorsTimer.DestroyedInhibitors = InhibitorsTimer.DestroyedInhibitors + 1
+			self.InhibitorsTable[hash].IsDestroyed = true
+			self.DestroyedInhibitors = self.DestroyedInhibitors + 1
 		end
 	end
 
-	InhibitorsTimer.Menu()
+	InhibitorsTimer:Menu()
 end
 
-function InhibitorsTimer.Menu()
+function InhibitorsTimer:Menu()
 	InhibitorsTimer.Menu = Menu:AddMenu("IT_Menu", "InhibitorsTimer")
 	InhibitorsTimer.Menu:AddMenu("IT_Settings", "Inhibitors Timer Settings")
 	InhibitorsTimer.Menu.IT_Settings:AddBool("IT_TimerText", "Use a Inhibitors Timer Text", true)
@@ -543,44 +548,44 @@ function InhibitorsTimer.Menu()
 	InhibitorsTimer.Menu:AddBool("IT_Toggle", "Activate Inhibitors Timer", true)
 end
 
-function InhibitorsTimer.OnDelete(obj)
-	local comparor = InhibitorsTimer.RespawnComparor[obj.Name]
+function InhibitorsTimer:OnDelete(obj)
+	local comparor = self.RespawnComparor[obj.Name]
 	if (InhibitorsTimer.Menu.IT_Toggle.Value and comparor) then
 		local hash = GetHash(obj.Position.x)
-		local InhibitorsTable = InhibitorsTimer.InhibitorsTable[hash]
+		local InhibitorsTable = self.InhibitorsTable[hash]
 		if (InhibitorsTable) then
 			if (comparor.Destroy) then
 				InhibitorsTable.IsDestroyed = true
-				local respawnTime = OSClock() + InhibitorsTimer.ConstRespawnTime
+				local respawnTime = OSClock() + self.ConstRespawnTime
 				InhibitorsTable.RespawnTime = respawnTime
-				InhibitorsTimer.DestroyedInhibitors = InhibitorsTimer.DestroyedInhibitors + 1
+				self.DestroyedInhibitors = self.DestroyedInhibitors + 1
 			else
 				InhibitorsTable.IsDestroyed = false
 				InhibitorsTable.RespawnTime = 0.0
-				if (InhibitorsTimer.DestroyedInhibitors > 0) then
-					InhibitorsTimer.DestroyedInhibitors = InhibitorsTimer.DestroyedInhibitors - 1
+				if (self.DestroyedInhibitors > 0) then
+					self.DestroyedInhibitors = self.DestroyedInhibitors - 1
 				end
 			end
 		end
 	end
 end
 
-function InhibitorsTimer.OnDraw()
+function InhibitorsTimer:OnDraw()
 	local menu = InhibitorsTimer.Menu
-	if (menu.IT_Toggle.Value and InhibitorsTimer.DestroyedInhibitors > 0) then
-		for i = 1, InhibitorsTimer.Inhibitors do
-			local index = InhibitorsTimer.InhibitorsEnum[i]
-			if (InhibitorsTimer.InhibitorsTable[index].IsDestroyed) then
-				local time = InhibitorsTimer.InhibitorsTable[index].RespawnTime - OSClock()
+	if (menu.IT_Toggle.Value and self.DestroyedInhibitors > 0) then
+		for i = 1, self.Inhibitors do
+			local index = self.InhibitorsEnum[i]
+			if (self.InhibitorsTable[index].IsDestroyed) then
+				local time = self.InhibitorsTable[index].RespawnTime - OSClock()
 				local timeleft = SecondsToClock(time)
 				if (time <= 0) then
-					InhibitorsTimer.InhibitorsTable[index].IsDestroyed = false
-					InhibitorsTimer.InhibitorsTable[index].RespawnTime = 0.0
-					if (InhibitorsTimer.DestroyedInhibitors > 0) then
-						InhibitorsTimer.DestroyedInhibitors = InhibitorsTimer.DestroyedInhibitors - 1
+					self.InhibitorsTable[index].IsDestroyed = false
+					self.InhibitorsTable[index].RespawnTime = 0.0
+					if (self.DestroyedInhibitors > 0) then
+						self.DestroyedInhibitors = self.DestroyedInhibitors - 1
 					end
 				else
-					local pos = InhibitorsTimer.InhibitorsTable[index].Position
+					local pos = self.InhibitorsTable[index].Position
 					local posw2s = Renderer.WorldToScreen(pos)
 					local posw2m = Renderer.WorldToMinimap(pos) + Vector(-15, -10, 0)
 					menu = InhibitorsTimer.Menu.IT_Settings
@@ -611,34 +616,34 @@ end
 	██████  ██   ██ ██   ██  ██████   ██████  ██   ████ ██████  ██   ██ ██   ██  ██████  ██   ████        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                     
 ]]
 
-function DragonBaronTracker.Init()
+function DragonBaronTracker:Init()
 	--[[
 		IsDragon: 1 - Dragon, 2 - Baron
 		IsAttacking: 1 - Attacking, 2 - Resetting, 3 - Dead
 	]]
-	DragonBaronTracker.DragonBaronTable = {
+	self.DragonBaronTable = {
 		["SRU_Dragon_Spawn_Praxis.troy"] = {IsDragon = 1, IsAttacking = 1},
 		["SRU_Dragon_idle1_landing_sound.troy"] = {IsDragon = 1, IsAttacking = 2},
 		["SRU_Dragon_death_sound.troy"] = {IsDragon = 1, IsAttacking = 3},
 		["SRU_Baron_Base_BA1_tar.troy"] = {IsDragon = 2, IsAttacking = 1},
 		["SRU_Baron_death_sound.troy"] = {IsDragon = 2, IsAttacking = 3}
 	}
-	DragonBaronTracker.DragonMessage = "DRAGON IS UNDER ATTACK"
-	DragonBaronTracker.BaronMessage = "BARON IS UNDER ATTACK"
-	DragonBaronTracker.DragonBaronStatus = {2, 2}
+	self.DragonMessage = "DRAGON IS UNDER ATTACK"
+	self.BaronMessage = "BARON IS UNDER ATTACK"
+	self.DragonBaronStatus = {2, 2}
 	local playerResolution = Renderer.GetResolution()
-	DragonBaronTracker.AlertPosition = Vector(floor(playerResolution.x) * 0.5 - 80.0, floor(playerResolution.y) * 0.16666666666, 0)
-	DragonBaronTracker.AlertRectPosition = Vector(DragonBaronTracker.AlertPosition.x - 15, DragonBaronTracker.AlertPosition.y, DragonBaronTracker.AlertPosition.z)
-	DragonBaronTracker.BaronAlertPosition = Vector(DragonBaronTracker.AlertPosition.x, DragonBaronTracker.AlertPosition.y - 20, DragonBaronTracker.AlertPosition.z)
-	DragonBaronTracker.BaronRectAlertPosition =
-		Vector(DragonBaronTracker.BaronAlertPosition.x - 15, DragonBaronTracker.BaronAlertPosition.y, DragonBaronTracker.BaronAlertPosition.z)
-		DragonBaronTracker.BaronActiveStatus = 0
-		DragonBaronTracker.TextClipper = Vector(200, 15, 0)
+	self.AlertPosition = Vector(floor(playerResolution.x) * 0.5 - 80.0, floor(playerResolution.y) * 0.16666666666, 0)
+	self.AlertRectPosition = Vector(self.AlertPosition.x - 15, self.AlertPosition.y, self.AlertPosition.z)
+	self.BaronAlertPosition = Vector(self.AlertPosition.x, self.AlertPosition.y - 20, self.AlertPosition.z)
+	self.BaronRectAlertPosition =
+		Vector(self.BaronAlertPosition.x - 15, self.BaronAlertPosition.y, self.BaronAlertPosition.z)
+	self.BaronActiveStatus = 0
+	self.TextClipper = Vector(200, 15, 0)
 
-	DragonBaronTracker.Menu()
+	DragonBaronTracker:Menu()
 end
 
-function DragonBaronTracker.Menu()
+function DragonBaronTracker:Menu()
 	DragonBaronTracker.Menu = Menu:AddMenu("DBTracker", "DragonBaronTracker")
 	DragonBaronTracker.Menu:AddMenu("DBT_Settings", "Dragon Baron Tracker Settings")
 	DragonBaronTracker.Menu.DBT_Settings:AddBool("DBT_DragonToggle", "Track Dragon", true)
@@ -658,35 +663,35 @@ local function IsBaronAttacking()
 	end
 end
 
-function DragonBaronTracker.OnDelete(obj)
+function DragonBaronTracker:OnDelete(obj)
 	local menu = DragonBaronTracker.Menu
 	if (menu.DBT_Toggle.Value) then
-		local DragonBaronTable = DragonBaronTracker.DragonBaronTable[obj.Name]
+		local DragonBaronTable = self.DragonBaronTable[obj.Name]
 		if (DragonBaronTable) then
-			DragonBaronTracker.DragonBaronStatus[DragonBaronTable.IsDragon] = DragonBaronTable.IsAttacking
+			self.DragonBaronStatus[DragonBaronTable.IsDragon] = DragonBaronTable.IsAttacking
 			-- only baron
 			if (DragonBaronTable.IsDragon == 2 and DragonBaronTable.IsAttacking ~= 3) then
 				local time = OSClock()
-				DragonBaronTracker.BaronActiveStatus = time + 2.0
+				self.BaronActiveStatus = time + 2.0
 				delay(3000, IsBaronAttacking)
 			end
 		end
 	end
 end
 
-function DragonBaronTracker.OnDraw()
+function DragonBaronTracker:OnDraw()
 	local menu = DragonBaronTracker.Menu
 	if (menu.DBT_Toggle.Value) then
 		menu = DragonBaronTracker.Menu.DBT_Settings
 		-- Maybe I can reduce below lines later..
-		if (menu.DBT_DragonToggle.Value and DragonBaronTracker.DragonBaronStatus[1] == 1) then
-			Renderer.DrawFilledRect(DragonBaronTracker.AlertRectPosition, DragonBaronTracker.TextClipper, 2, menu.DBT_DragonBGCol.Value)
-			Renderer.DrawText(DragonBaronTracker.AlertPosition, DragonBaronTracker.TextClipper, DragonBaronTracker.DragonMessage, menu.DBT_DragonTextCol.Value)
+		if (menu.DBT_DragonToggle.Value and self.DragonBaronStatus[1] == 1) then
+			Renderer.DrawFilledRect(self.AlertRectPosition, self.TextClipper, 2, menu.DBT_DragonBGCol.Value)
+			Renderer.DrawText(self.AlertPosition, self.TextClipper, self.DragonMessage, menu.DBT_DragonTextCol.Value)
 		end
 
-		if (menu.DBT_BaronToggle.Value and DragonBaronTracker.DragonBaronStatus[2] == 1) then
-			Renderer.DrawFilledRect(DragonBaronTracker.BaronRectAlertPosition, DragonBaronTracker.TextClipper, 2, menu.DBT_BaronBGCol.Value)
-			Renderer.DrawText(DragonBaronTracker.BaronAlertPosition, DragonBaronTracker.TextClipper, DragonBaronTracker.BaronMessage, menu.DBT_BaronTextCol.Value)
+		if (menu.DBT_BaronToggle.Value and self.DragonBaronStatus[2] == 1) then
+			Renderer.DrawFilledRect(self.BaronRectAlertPosition, self.TextClipper, 2, menu.DBT_BaronBGCol.Value)
+			Renderer.DrawText(self.BaronAlertPosition, self.TextClipper, self.BaronMessage, menu.DBT_BaronTextCol.Value)
 		end
 	end
 end
@@ -699,17 +704,17 @@ end
 	 ██████  ██████   ██████  ███████ ██████   ██████   ███ ███  ██   ████        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                                                                                                                                                                                   
 ]]
 
-function CooldownTracker.Init()
-	CooldownTracker.Heroes = {true, true, true, true, true, true, true, true, true, true}
-	CooldownTracker.StringFormat = "%.f"
-	CooldownTracker.EnumColor = {
+function CooldownTracker:Init()
+	self.Heroes = {true, true, true, true, true, true, true, true, true, true}
+	self.StringFormat = "%.f"
+	self.EnumColor = {
 		NotLearned = 1,
 		Ready = 2,
 		OnCooldown = 3,
 		AlmostReady = 4,
 		NoMana = 5
 	}
-	CooldownTracker.ColorList = {
+	self.ColorList = {
 		[1] = 0x666666FF, --NotLearned
 		[2] = 0x00CC00FF, --Ready
 		[3] = 0xE60000FF, --OnCooldown
@@ -717,14 +722,14 @@ function CooldownTracker.Init()
 		[5] = 0x1AffffFF --NoMana
 	}
 
-	CooldownTracker.BoxOutline = 0x333333FF
-	CooldownTracker.TextColor = 0x00FF00FF
-	CooldownTracker.TextColorBlack = 0x0d0d0dFF
+	self.BoxOutline = 0x333333FF
+	self.TextColor = 0x00FF00FF
+	self.TextColorBlack = 0x0d0d0dFF
 
-	CooldownTracker.SpellBackground = Vector(104, 5, 0)
-	CooldownTracker.SpellBoxVector = Vector(25, 5, 0)
-	CooldownTracker.SSBoxVector = Vector(30, 12, 0)
-	CooldownTracker.SummonerSpellsStructure = {
+	self.SpellBackground = Vector(104, 5, 0)
+	self.SpellBoxVector = Vector(25, 5, 0)
+	self.SSBoxVector = Vector(30, 12, 0)
+	self.SummonerSpellsStructure = {
 		["SummonerBarrier"] = {Name = "Barrier", Color = 0xffb833ff, CDColor = 0xbd7b00ff},
 		["SummonerBoost"] = {Name = "Cleanse", Color = 0x33ffffff, CDColor = 0x00bdbdff},
 		["SummonerDot"] = {Name = "Ignite", Color = 0xff3333ff, CDColor = 0xbd0000ff},
@@ -751,17 +756,17 @@ function CooldownTracker.Init()
 		["Sylas"] = {2, Vector(28, 0, 0)}
 	}
 
-	CooldownTracker.count = 1
+	self.count = 1
 	local champList = ObjManager.Get("all", "heroes")
 	for k, v in pairs(champList) do
 		local objHero = v.AsHero
 		if (objHero and objHero.IsValid) then
-			CooldownTracker.Heroes[CooldownTracker.count] = {true, true, true}
+			self.Heroes[self.count] = {true, true, true}
 			local adjust = AdjustmentRequired[objHero.CharName]
 			if (adjust) then
-				CooldownTracker.Heroes[CooldownTracker.count][3] = adjust
+				self.Heroes[self.count][3] = adjust
 			else
-				CooldownTracker.Heroes[CooldownTracker.count][3] = {3, nil}
+				self.Heroes[self.count][3] = {3, nil}
 			end
 			local copySpell = {
 				[0] = {
@@ -821,26 +826,26 @@ function CooldownTracker.Init()
 							copySpell[i].PctCooldown = pct
 						end
 						if (cd > 0.0) then
-							copySpell[i].Color = CooldownTracker.EnumColor.NotLearned
+							copySpell[i].Color = self.EnumColor.NotLearned
 
 							if (cd <= 10.0) then
-								copySpell[i].Color2 = CooldownTracker.EnumColor.AlmostReady
+								copySpell[i].Color2 = self.EnumColor.AlmostReady
 							else
-								copySpell[i].Color2 = CooldownTracker.EnumColor.OnCooldown
+								copySpell[i].Color2 = self.EnumColor.OnCooldown
 							end
 						else
-							copySpell[i].Color = CooldownTracker.EnumColor.Ready
+							copySpell[i].Color = self.EnumColor.Ready
 							local mana = objHero.Mana - t_spell.ManaCost
 							if (mana < 0) then
 								copySpell[i].IsEnoughMana = false
-								copySpell[i].Color = CooldownTracker.EnumColor.NoMana
+								copySpell[i].Color = self.EnumColor.NoMana
 							else
 								copySpell[i].IsEnoughMana = true
 							end
 						end
 					else
 						copySpell[i].IsLearned = false
-						copySpell[i].Color = CooldownTracker.EnumColor.NotLearned
+						copySpell[i].Color = self.EnumColor.NotLearned
 					end
 				end
 			end
@@ -854,22 +859,22 @@ function CooldownTracker.Init()
 					copySpell[i].RemainingCooldown = cd
 
 					local ssName = t_spell.Name
-					local ss = CooldownTracker.SummonerSpellsStructure[ssName]
+					local ss = self.SummonerSpellsStructure[ssName]
 					if (ss) then
 						copySpell[i].Name = ssName
 					end
 				end
 			end
-			CooldownTracker.Heroes[CooldownTracker.count][1] = copySpell
-			CooldownTracker.Heroes[CooldownTracker.count][2] = objHero
-			CooldownTracker.count = CooldownTracker.count + 1
+			self.Heroes[self.count][1] = copySpell
+			self.Heroes[self.count][2] = objHero
+			self.count = self.count + 1
 		end
 	end
-	CooldownTracker.count = CooldownTracker.count - 1
-	CooldownTracker.Menu()
+	self.count = self.count - 1
+	CooldownTracker:Menu()
 end
 
-function CooldownTracker.Menu()
+function CooldownTracker:Menu()
 	CooldownTracker.Menu = Menu:AddMenu("CDTracker", "CooldownTracker")
 	CooldownTracker.Menu:AddMenu("CDTracker_Settings", "Cooldown Tracker Settings")
 	CooldownTracker.Menu.CDTracker_Settings:AddBool("CDTracker_TrackMe", "Track Me", true)
@@ -887,11 +892,11 @@ local function CDCondition(objHero)
 		(objHero.IsEnemy and menu.CDTracker_TrackEnemy.Value)
 end
 
-function CooldownTracker.OnTick()
+function CooldownTracker:OnTick()
 	local menu = CooldownTracker.Menu
 	if (menu.CDTracker_Toggle.Value) then
-		local Heroes = CooldownTracker.Heroes
-		local maxHeroes = CooldownTracker.count
+		local Heroes = self.Heroes
+		local maxHeroes = self.count
 		local IsOnScreen = Renderer.IsOnScreen
 		for h = 1, maxHeroes do
 			local objHero = Heroes[h][2].AsHero
@@ -913,25 +918,25 @@ function CooldownTracker.OnTick()
 							end
 
 							if (cd > 0.0) then
-								copySpell[i].Color = CooldownTracker.EnumColor.NotLearned
+								copySpell[i].Color = self.EnumColor.NotLearned
 								if (cd <= 10.0) then
-									copySpell[i].Color2 = CooldownTracker.EnumColor.AlmostReady
+									copySpell[i].Color2 = self.EnumColor.AlmostReady
 								else
-									copySpell[i].Color2 = CooldownTracker.EnumColor.OnCooldown
+									copySpell[i].Color2 = self.EnumColor.OnCooldown
 								end
 							else
-								copySpell[i].Color = CooldownTracker.EnumColor.Ready
+								copySpell[i].Color = self.EnumColor.Ready
 								local mana = objHero.Mana - copySpell[i].Spell.ManaCost
 								if (mana < 0) then
 									copySpell[i].IsEnoughMana = false
-									copySpell[i].Color = CooldownTracker.EnumColor.NoMana
+									copySpell[i].Color = self.EnumColor.NoMana
 								else
 									copySpell[i].IsEnoughMana = true
 								end
 							end
 						else
 							copySpell[i].IsLearned = false
-							copySpell[i].Color = CooldownTracker.EnumColor.NotLearned
+							copySpell[i].Color = self.EnumColor.NotLearned
 						end
 						Heroes[h][1] = copySpell
 					end
@@ -945,7 +950,7 @@ function CooldownTracker.OnTick()
 							local cd = t_spell.RemainingCooldown
 							copySpell[i].RemainingCooldown = cd
 							local ssName = t_spell.Name
-							local ss = CooldownTracker.SummonerSpellsStructure[ssName]
+							local ss = self.SummonerSpellsStructure[ssName]
 							if (ss) then
 								copySpell[i].Name = ssName
 							end
@@ -958,12 +963,12 @@ function CooldownTracker.OnTick()
 	end
 end
 
-function CooldownTracker.OnDraw()
+function CooldownTracker:OnDraw()
 	local menu = CooldownTracker.Menu
 	if (menu.CDTracker_Toggle.Value) then
 		local IsOnScreen2D = Renderer.IsOnScreen2D
-		local Heroes = CooldownTracker.Heroes
-		local maxHeroes = CooldownTracker.count
+		local Heroes = self.Heroes
+		local maxHeroes = self.count
 
 		for h = 1, maxHeroes do
 			local objHero = Heroes[h][2].AsHero
@@ -978,34 +983,34 @@ function CooldownTracker.OnDraw()
 					end
 					Renderer.DrawFilledRect(
 						Vector(hpPos.x - 45, hpPos.y - 2, 0),
-						CooldownTracker.SpellBackground,
+						self.SpellBackground,
 						2,
-						CooldownTracker.ColorList[CooldownTracker.EnumColor.NotLearned]
+						self.ColorList[self.EnumColor.NotLearned]
 					)
-					local SpellBoxVector = CooldownTracker.SpellBoxVector
+					local SpellBoxVector = self.SpellBoxVector
 					for i = SpellSlots.Q, SpellSlots.R do
 						local copySpell = Heroes[h][1]
 
-						local color = CooldownTracker.ColorList[copySpell[i].Color]
-						local color2 = CooldownTracker.ColorList[copySpell[i].Color2]
+						local color = self.ColorList[copySpell[i].Color]
+						local color2 = self.ColorList[copySpell[i].Color2]
 						local pos = hpPos + Vector(26 * i - 45, -2, 0)
 						if (color and color2) then
 							if (copySpell[i].RemainingCooldown > 0) then
 								local pctPos = Vector(26 - copySpell[i].PctCooldown, 5, 0)
 								Renderer.DrawFilledRect(pos, pctPos, 1, color2)
-								Renderer.DrawRectOutline(pos, SpellBoxVector, 2, 2, CooldownTracker.BoxOutline)
+								Renderer.DrawRectOutline(pos, SpellBoxVector, 2, 2, self.BoxOutline)
 								pos = Vector(pos.x + 4, pos.y + 7, 0)
-								Renderer.DrawText(pos, TextClipper, format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown), CooldownTracker.TextColor)
+								Renderer.DrawText(pos, TextClipper, format(self.StringFormat, copySpell[i].RemainingCooldown), self.TextColor)
 							else
 								Renderer.DrawFilledRect(pos, SpellBoxVector, 2, color)
-								Renderer.DrawRectOutline(pos, SpellBoxVector, 2, 2, CooldownTracker.BoxOutline)
+								Renderer.DrawRectOutline(pos, SpellBoxVector, 2, 2, self.BoxOutline)
 							end
 						end
 					end
 
-					local ssBox = CooldownTracker.SSBoxVector
+					local ssBox = self.SSBoxVector
 					hpPos = objHero.HealthBarScreenPos
-					if (adjustment[1] == 2 and CooldownTracker.S_Menu_Adjust.Value) then
+					if (adjustment[1] == 2 and self.S_Menu_Adjust.Value) then
 						hpPos = hpPos + adjustment[2]
 					end
 
@@ -1015,13 +1020,13 @@ function CooldownTracker.OnDraw()
 						if (copySpell) then
 							local posText = Vector(hpPos.x + 70, 13 * (i - 1) + hpPos.y - 65, 0)
 							if (copySpell[i].RemainingCooldown > 0) then
-								Renderer.DrawFilledRect(pos, ssBox, 2, CooldownTracker.SummonerSpellsStructure[copySpell[i].Name].CDColor)
-								Renderer.DrawText(posText, TextClipper, format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown), CooldownTracker.TextColorBlack)
+								Renderer.DrawFilledRect(pos, ssBox, 2, self.SummonerSpellsStructure[copySpell[i].Name].CDColor)
+								Renderer.DrawText(posText, TextClipper, format(self.StringFormat, copySpell[i].RemainingCooldown), self.TextColorBlack)
 							else
-								Renderer.DrawFilledRect(pos, ssBox, 2, CooldownTracker.SummonerSpellsStructure[copySpell[i].Name].Color)
+								Renderer.DrawFilledRect(pos, ssBox, 2, self.SummonerSpellsStructure[copySpell[i].Name].Color)
 							end
 						end
-						Renderer.DrawRectOutline(pos, ssBox, 2, 2, CooldownTracker.BoxOutline)
+						Renderer.DrawRectOutline(pos, ssBox, 2, 2, self.BoxOutline)
 					end
 				end
 			end
@@ -1037,18 +1042,18 @@ end
 	██   ██  ██████    ██    ██   ████   ██   ██    ██     ██████  ██   ██                                                                                                                                                                                                                                                                                                                                      
 ]]
 
-function Activator.Init()
-	Activator.EnumMode = {"Combo", "Harass"}
-	Activator.EnumOffensiveType = {
+function Activator:Init()
+	self.EnumMode = {"Combo", "Harass"}
+	self.EnumOffensiveType = {
 		Targeted = 1,
 		NonTargeted = 2,
 		Active = 3
 	}
 
-	Activator.Offensive = {
+	self.Offensive = {
 		[itemID.HextechGunblade] = {
 			Name = "Hextech Gunblade",
-			Type = Activator.EnumOffensiveType.Targeted,
+			Type = self.EnumOffensiveType.Targeted,
 			Range = 700,
 			EnemyHealth = 80,
 			MyHealth = 35,
@@ -1057,7 +1062,7 @@ function Activator.Init()
 		},
 		[itemID.BladeOftheRuinedKing] = {
 			Name = "Blade of the Ruined King",
-			Type = Activator.EnumOffensiveType.Targeted,
+			Type = self.EnumOffensiveType.Targeted,
 			Range = 600,
 			EnemyHealth = 80,
 			MyHealth = 35,
@@ -1066,7 +1071,7 @@ function Activator.Init()
 		},
 		[itemID.BilgewaterCutlass] = {
 			Name = "Bilgewater Cutlass",
-			Type = Activator.EnumOffensiveType.Targeted,
+			Type = self.EnumOffensiveType.Targeted,
 			Range = 600,
 			EnemyHealth = 80,
 			MyHealth = 35,
@@ -1075,7 +1080,7 @@ function Activator.Init()
 		},
 		[itemID.YoumuusGhostblade] = {
 			Name = "Youmuus Ghostblade",
-			Type = Activator.EnumOffensiveType.Targeted,
+			Type = self.EnumOffensiveType.Targeted,
 			Range = 600,
 			EnemyHealth = 80,
 			MyHealth = 35,
@@ -1084,7 +1089,7 @@ function Activator.Init()
 		},
 		[itemID.Tiamat] = {
 			Name = "Tiamat",
-			Type = Activator.EnumOffensiveType.Active,
+			Type = self.EnumOffensiveType.Active,
 			Range = 350,
 			EnemyHealth = 80,
 			MyHealth = 35,
@@ -1093,7 +1098,7 @@ function Activator.Init()
 		},
 		[itemID.RavenousHydra] = {
 			Name = "Ravenous Hydra",
-			Type = Activator.EnumOffensiveType.Active,
+			Type = self.EnumOffensiveType.Active,
 			Range = 350,
 			EnemyHealth = 80,
 			MyHealth = 35,
@@ -1102,7 +1107,7 @@ function Activator.Init()
 		},
 		[itemID.TitanicHydra] = {
 			Name = "Titanic Hydra",
-			Type = Activator.EnumOffensiveType.Active,
+			Type = self.EnumOffensiveType.Active,
 			Range = 350,
 			EnemyHealth = 80,
 			MyHealth = 35,
@@ -1111,7 +1116,7 @@ function Activator.Init()
 		},
 		[itemID.HextechGLP800] = {
 			Name = "Hextech GLP-800",
-			Type = Activator.EnumOffensiveType.NonTargeted,
+			Type = self.EnumOffensiveType.NonTargeted,
 			Range = 1000,
 			Speed = 2000,
 			Delay = 0.25,
@@ -1122,7 +1127,7 @@ function Activator.Init()
 		},
 		[itemID.HextechProtobelt01] = {
 			Name = "Hextech Protobelt-01",
-			Type = Activator.EnumOffensiveType.NonTargeted,
+			Type = self.EnumOffensiveType.NonTargeted,
 			Range = 400,
 			Speed = 1150,
 			Delay = 0,
@@ -1132,14 +1137,14 @@ function Activator.Init()
 			Menu = {}
 		}
 	}
-	Activator.Menu()
+	Activator:Menu()
 end
 
-function Activator.Menu()
+function Activator:Menu()
 	Activator.Menu = Menu:AddMenu("Activator", "Activator")
 	TS = _G.Libs.TargetSelector(Activator.Menu)
 	Activator.Menu:AddMenu("Offensive", "Offensive")
-	for k, v in pairs(Activator.Offensive) do
+	for k, v in pairs(self.Offensive) do
 		local menuName = v.MenuName
 		Activator.Menu.Offensive:AddMenu(menuName, v.Name)
 		v.Menu.EnemyHealth = Activator.Menu.Offensive[menuName]:AddSlider(menuName .. "EnemyHealth", "Enemy Health %", 0, 100, 1, v.EnemyHealth)
@@ -1147,10 +1152,10 @@ function Activator.Menu()
 		v.Menu.Active = Activator.Menu.Offensive[menuName]:AddBool(menuName .. "_Toggle", "Active " .. v.Name, true)
 	end
 
-	local mName = Activator.Offensive[itemID.Tiamat].MenuName
-	Activator.Offensive[itemID.Tiamat].Menu.FarmActive = Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Tiamet during Farming", true)
-	mName = Activator.Offensive[itemID.RavenousHydra].MenuName
-	Activator.Offensive[itemID.RavenousHydra].Menu.FarmActive = Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Hydra during Farming", true)
+	local mName = self.Offensive[itemID.Tiamat].MenuName
+	self.Offensive[itemID.Tiamat].Menu.FarmActive = Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Tiamet during Farming", true)
+	mName = self.Offensive[itemID.RavenousHydra].MenuName
+	self.Offensive[itemID.RavenousHydra].Menu.FarmActive = Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Hydra during Farming", true)
 
 	Activator.Menu.Offensive:AddBool("FocusedOnly", "Use items on Focused Target ONLY", true)
 	Activator.Menu.Offensive:AddBool("ATOF_Toggle", "Use Offensive Items", true)
@@ -1163,28 +1168,28 @@ local function FocusedCondition (Range)
 	return (toggle and ((focusedT and focusedT == target) or (focusedT == nil))) or not toggle
 end
 
-function Activator.OnTick()
+function Activator:OnTick()
 	local menu = Activator.Menu.Offensive
 	if ( menu.ATOF_Toggle.Value ) then
 
-		if (Orbwalker.GetMode() == Activator.EnumMode[1]) then
+		if (Orbwalker.GetMode() == self.EnumMode[1]) then
 			local target = TS:GetTarget(1000)
 			if (target == nil) then
 				return
 			end
 			for k, v in pairs(Player.Items) do
 				local itemslot = k + 6
-				local item = Activator.Offensive[v.ItemId]
+				local item = self.Offensive[v.ItemId]
 				if (item and item.Menu.Active.Value and Player:GetSpellState(itemslot) == SpellStates.Ready) then
 					target = TS:GetTarget(item.Range)
 					local focusedCond = FocusedCondition(item.Range)
 					if (target and focusedCond) then
 						if (Player.HealthPercent <= item.Menu.MyHealth.Value or target.HealthPercent <= item.Menu.EnemyHealth.Value) then
-							if (item.Type == Activator.EnumOffensiveType.Targeted) then
+							if (item.Type == self.EnumOffensiveType.Targeted) then
 								Input.Cast(itemslot, target)
-							elseif (item.Type == Activator.EnumOffensiveType.Active) then
+							elseif (item.Type == self.EnumOffensiveType.Active) then
 								Input.Cast(itemslot)
-							elseif (item.Type == Activator.EnumOffensiveType.NonTargeted) then
+							elseif (item.Type == self.EnumOffensiveType.NonTargeted) then
 								-- Credit to Thron's Ashe
 								local collision = Collision.SearchMinions(Player.Position, target.Position, 30, item.Speed, item.Delay * 1000, 1)
 								if not collision.Result then
@@ -1204,15 +1209,15 @@ local function IsTiamentOrHydra(_ItemID)
 	return (temp[_ItemID] and Activator.Offensive[_ItemID].Menu.FarmActive.Value)
 end
 
-function Activator.OnUnkillableMinion(minion)
+function Activator:OnUnkillableMinion(minion)
 	local menu = Activator.Menu.Offensive
 	if ( menu.ATOF_Toggle.Value ) then
-		if (minion:Distance(Player) <= Activator.Offensive[itemID.Tiamat].Range) then
+		if (minion:Distance(Player) <= self.Offensive[itemID.Tiamat].Range) then
 			for k, v in pairs(Player.Items) do
 				local itemslot = k + 6
 				local cond = IsTiamentOrHydra(v.ItemId)
 				if ( cond ) then
-				local item = Activator.Offensive[v.ItemId]
+				local item = self.Offensive[v.ItemId]
 					if (item and item.Menu.Active.Value and Player:GetSpellState(itemslot) == SpellStates.Ready) then
 						Input.Cast(itemslot, minion)
 					end
@@ -1243,9 +1248,9 @@ end
 	   ██     ██████  ██   ██ ██   ████ ██   ██ ██   ██  ██████   ██████  ██   ████ ██████                                                                                                                                                                                                                                                                                                                                                                                                                        
 ]]
 
-function TurnAround.Init()
-	TurnAround.TurnAroundActive = false
-	TurnAround.SpellData = {
+function TurnAround:Init()
+	self.TurnAroundActive = false
+	self.SpellData = {
 		["Cassiopeia"] = {
 			["CassiopeiaR"] = {Range = 850, PreDelay = 0, PostDealy = 525, Delay = 0.5, FacingFront = false, MoveTo = 100}
 		},
@@ -1257,49 +1262,49 @@ function TurnAround.Init()
 	for handle, enemy in pairs(enemyList) do
 		if (enemy) then
 			local enemyHero = enemy.AsHero
-			local tr = TurnAround.SpellData[enemyHero.CharName]
+			local tr = self.SpellData[enemyHero.CharName]
 			if (tr) then
-				TurnAround.TurnAroundActive = true
+				self.TurnAroundActive = true
 				break
 			end
 		end
 	end
-	TurnAround.LimitIssueOrder = 0
-	TurnAround.OriginalPath = Vector(0, 0, 0)
+	self.LimitIssueOrder = 0
+	self.OriginalPath = Vector(0, 0, 0)
 
 	-- if there is no turn around champion, unload the Turnaround
-	if (not TurnAround.TurnAroundActive) then
+	if (not self.TurnAroundActive) then
 		EventManager.RemoveCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
 		EventManager.RemoveCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
 		TurnAround.OnIssueOrder = nil
 		TurnAround.OnProcessSpell = nil
-		TurnAround.SpellData = nil
-		TurnAround.TurnAroundActive = nil
+		self.SpellData = nil
+		self.TurnAroundActive = nil
 	end
-	TurnAround.Menu()
+	TurnAround:Menu()
 end
 
-function TurnAround.Menu()
+function TurnAround:Menu()
 	TurnAround.Menu = Menu:AddMenu("TA_Menu", "TurnAround")
 	TurnAround.Menu:AddBool("TA_Toggle", "Activate TurnAround", true)
 	TurnAround.Menu:AddLabel("TA_Label", "Cassiopeia/Tryndamere Supported", true)
 end
 
-function TurnAround.OnIssueOrder(Args)
+function TurnAround:OnIssueOrder(Args)
 	if (Args and TurnAround.Menu["TA_Toggle"].Value) then
-		TurnAround.OriginalPath = Args.Position
-		if (TurnAround.LimitIssueOrder > OSClock()) then
+		self.OriginalPath = Args.Position
+		if (self.LimitIssueOrder > OSClock()) then
 			Args.Process = false
 		end
 	end
 end
 
-function TurnAround.OnProcessSpell(obj, spellcast)
+function TurnAround:OnProcessSpell(obj, spellcast)
 	if (TurnAround.Menu["TA_Toggle"].Value) then
 		local objHero = obj.AsHero
-		local cond = TurnAround.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy
+		local cond = self.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy
 		if (cond) then
-			local spell = TurnAround.SpellData[objHero.CharName][spellcast.Name]
+			local spell = self.SpellData[objHero.CharName][spellcast.Name]
 			if (objHero and spell) then
 				local condSpell = Player:Distance(objHero.Position) + Player.BoundingRadius <= spell.Range
 				local isFacing = Player:IsFacing(objHero, 120)
@@ -1309,8 +1314,8 @@ function TurnAround.OnProcessSpell(obj, spellcast)
 						objHero.Position:Extended(Player.Position, Player.Position:Distance(objHero.Position) + spell.MoveTo)
 					Input.MoveTo(overridePos)
 					Input.MoveTo(overridePos)
-					TurnAround.LimitIssueOrder = OSClock() + (spell.Delay)
-					delay((spell.PostDealy), Input.MoveTo, TurnAround.OriginalPath)
+					self.LimitIssueOrder = OSClock() + (spell.Delay)
+					delay((spell.PostDealy), Input.MoveTo, self.OriginalPath)
 				end
 			end
 		end
@@ -1325,10 +1330,10 @@ end
 	   ██     ██████   ███ ███  ███████ ██   ██     ██   ██ ██   ██ ██   ████  ██████  ███████ ███████                                                                                                                                                                                                                                                                                                                                                                                                                    
 ]]
 
-function TowerRanges.Init()
+function TowerRanges:Init()
 	local FountainTurrets = {["Turret_OrderTurretShrine_A"] = false, ["Turret_ChaosTurretShrine_A"] = false}
-	TowerRanges.TurretNames = {["SRU_Chaos_Turret1_Explode.troy"] = true, ["SRU_Order_Turret1_Explode.troy"] = true}
-	TowerRanges.TurretHashList = {
+	self.TurretNames = {["SRU_Chaos_Turret1_Explode.troy"] = true, ["SRU_Order_Turret1_Explode.troy"] = true}
+	self.TurretHashList = {
 		866,
 		327,
 		624,
@@ -1385,7 +1390,7 @@ function TowerRanges.Init()
 		[177] = {Position = Vector(2177, 89, 1807), IsAlly = false}
 	}
 
-	TowerRanges.ActiveTurrets = {}
+	self.ActiveTurrets = {}
 
 	local TurretList = ObjManager.Get("all", "turrets")
 	for k, turret in pairs(TurretList) do
@@ -1398,16 +1403,16 @@ function TowerRanges.Init()
 				local test = turret.AsAttackableUnit
 				if (test.IsAlive) then
 					data.IsAlly = isAlly
-					TowerRanges.ActiveTurrets[hash] = data
+					self.ActiveTurrets[hash] = data
 				end
 			end
 		end
 	end
-	TowerRanges.MenuStr = "TR"
-	TowerRanges.Menu()
+	self.MenuStr = "TR"
+	TowerRanges:Menu()
 end
 
-function TowerRanges.Menu()
+function TowerRanges:Menu()
 	TowerRanges.Menu = Menu:AddMenu("TR_Menu", "TowerRanges")
 	TowerRanges.Menu:AddBool("TR_Enemy", "Track Enemy Towers", true)
 	TowerRanges.Menu:AddRGBAMenu("TR_EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
@@ -1416,7 +1421,7 @@ function TowerRanges.Menu()
 	TowerRanges.Menu:AddBool("TR_Toggle", "Activate Tower Ranges", true)
 end
 
-function TowerRanges.OnDraw()
+function TowerRanges:OnDraw()
 	local value = TowerRanges.Menu.TR_Toggle.Value
 	if (value) then
 		for i = 1, #TowerRanges.TurretHashList do
@@ -1436,17 +1441,17 @@ function TowerRanges.OnDraw()
 	end
 end
 
-function TowerRanges.OnDelete(obj)
+function TowerRanges:OnDelete(obj)
 	local value = TowerRanges.Menu.TR_Toggle.Value
 	if (value) then
-		local name = TowerRanges.TurretNames[obj.Name]
+		local name = self.TurretNames[obj.Name]
 		if (name) then
 			local hash = GetHash(obj.Position.x)
-			TowerRanges.ActiveTurrets[hash] = nil
-			for i = 1, #TowerRanges.TurretHashList do
-				local hashActive = TowerRanges.TurretHashList[i]
+			self.ActiveTurrets[hash] = nil
+			for i = 1, #self.TurretHashList do
+				local hashActive = self.TurretHashList[i]
 				if (hash == hashActive) then
-					TowerRanges.TurretHashList[i] = nil
+					self.TurretHashList[i] = nil
 				end
 			end
 		end
@@ -1461,25 +1466,25 @@ end
 	██      ██   ██    ██    ██   ██        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
 ]]
 
-function PathTracker.Init()
-	PathTracker.HeroList = {}
-	PathTracker.DrawBox = Vector(15, 15, 0)
-	PathTracker.TextClipper = Vector(55, 15, 0)
-	PathTracker.HandleList = {}
+function PathTracker:Init()
+	self.HeroList = {}
+	self.DrawBox = Vector(15, 15, 0)
+	self.TextClipper = Vector(55, 15, 0)
+	self.HandleList = {}
 	local handleCount = 0
 	local heroList = ObjManager.Get("all", "heroes")
 	for handle, hero in pairs(heroList) do
 		if (hero) then
 			local ObjHero = hero.AsHero
-			PathTracker.HeroList[handle] = {ObjHero, 0, 0}
+			self.HeroList[handle] = {ObjHero, 0, 0}
 			handleCount = handleCount + 1
-			PathTracker.HandleList[handleCount] = handle
+			self.HandleList[handleCount] = handle
 		end
 	end
-	PathTracker.Menu()
+	PathTracker:Menu()
 end
 
-function PathTracker.Menu()
+function PathTracker:Menu()
 	PathTracker.Menu = Menu:AddMenu("PT_Menu", "PathTracker")
 	PathTracker.Menu:AddBool("PT_Enemy", "Track Enemy", true)
 	PathTracker.Menu:AddBool("PT_Ally", "Track Ally", false)
@@ -1501,10 +1506,10 @@ local function ETAToSeconds(Seconds)
 	return format("%02.f", floor(Seconds))
 end
 
-function PathTracker.OnDraw()
+function PathTracker:OnDraw()
 	if (PathTracker.Menu["PT_Toggle"].Value) then
-		for i = 1, #PathTracker.HandleList do
-			local value = PathTracker.HeroList[PathTracker.HandleList[i]]
+		for i = 1, #self.HandleList do
+			local value = self.HeroList[self.HandleList[i]]
 			local v = value[2]
 			local charName = value[1].CharName
 			local IsOnScreen = Renderer.IsOnScreen
@@ -1526,18 +1531,18 @@ function PathTracker.OnDraw()
 					local color = PathTracker.Menu.PT_ETAColor.Value
 					if (PathTracker.Menu.PT_CharName.Value) then
 						local drawName = Renderer.WorldToScreen(Vector(vEndPos.x - 30, vEndPos.y, vEndPos.z))
-						Renderer.DrawText(drawName, PathTracker.TextClipper, charName, color)
+						Renderer.DrawText(drawName, self.TextClipper, charName, color)
 					end
 
 					if (PathTracker.Menu.PT_ETA.Value) then
 						local drawTime = Renderer.WorldToScreen(Vector(vEndPos.x - 10, vEndPos.y - 35, vEndPos.z))
-						Renderer.DrawFilledRect(drawTime, PathTracker.DrawBox, 2, TeamColor(value[1].IsAlly, PathTracker, "PT"))
+						Renderer.DrawFilledRect(drawTime, self.DrawBox, 2, TeamColor(value[1].IsAlly, PathTracker, "PT"))
 						local time = value[3] - OSClock()
 						if (time < 0) then
 							value[2] = 0
 							value[3] = 0
 						else
-							Renderer.DrawText(drawTime, PathTracker.TextClipper, ETAToSeconds(time), color)
+							Renderer.DrawText(drawTime, self.TextClipper, ETAToSeconds(time), color)
 						end
 					end
 				end
@@ -1546,14 +1551,14 @@ function PathTracker.OnDraw()
 	end
 end
 
-function PathTracker.OnNewPath(obj, pathing)
+function PathTracker:OnNewPath(obj, pathing)
 	local cond = obj and obj.IsHero and obj.IsVisible and not obj.IsMe and (IsTeam(obj.IsAlly, PathTracker, "PT"))
 	if (cond) then
 		local Handle = obj.Handle
 		if (Handle) then
-			local enemy = PathTracker.HeroList[Handle]
+			local enemy = self.HeroList[Handle]
 			if (enemy) then
-				PathTracker.HeroList[Handle][2] = pathing
+				self.HeroList[Handle][2] = pathing
 				if (PathTracker.Menu.PT_ETA.Value) then
 					local ETA = 0.0
 					local movespeed = obj.MoveSpeed
@@ -1564,7 +1569,7 @@ function PathTracker.OnNewPath(obj, pathing)
 					end
 
 					if (ETA > 0.0) then
-						PathTracker.HeroList[Handle][3] = OSClock() + ETA
+						self.HeroList[Handle][3] = OSClock() + ETA
 					end
 				end
 			end
@@ -1580,18 +1585,18 @@ end
 	██████  ███████  ██████   ██████ ██   ██     ██      ██ ██ ██   ████ ██  ██████  ██   ████                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
 ]]
 
-function BlockMinion.Init()
-	BlockMinion.TargetMinion = nil
-	BlockMinion.GetMinion = false
-	BlockMinion.ToggleCondition = false
-	BlockMinion.BlockOnMsg = "Blocking ON"
-	BlockMinion.FindingMsg = "Fidning a Minion.."
-	BlockMinion.TextClipper = Vector(150, 15, 0)
-	BlockMinion.LocalTick = 0
-	BlockMinion.Menu()
+function BlockMinion:Init()
+	self.TargetMinion = nil
+	self.GetMinion = false
+	self.ToggleCondition = false
+	self.BlockOnMsg = "Blocking ON"
+	self.FindingMsg = "Fidning a Minion.."
+	self.TextClipper = Vector(150, 15, 0)
+	self.LocalTick = 0
+	BlockMinion:Menu()
 end
 
-function BlockMinion.Menu()
+function BlockMinion:Menu()
 	BlockMinion.Menu = Menu:AddMenu("BM_Menu", "BlockMinion")
 	BlockMinion.Menu:AddBool("BM_Toggle", "Activate Block Minion", true)
 	BlockMinion.Menu:AddKeyBind("BM_Key", "Blocking Key", 90) -- 90 is Z
@@ -1631,21 +1636,21 @@ local function GetTheClosetMinion()
 	return closetMinion
 end
 
-function BlockMinion.OnUpdate()
+function BlockMinion:OnUpdate()
 	local tick = OSClock()
-	if (BlockMinion.LocalTick < tick) then
-		BlockMinion.LocalTick = tick + 0.1
+	if (self.LocalTick < tick) then
+		self.LocalTick = tick + 0.1
 		local cond = BlockCondition()
 		if (cond) then
-			local tgminion = BlockMinion.targetMinion
-			if (not BlockMinion.GetMinion) then
+			local tgminion = self.targetMinion
+			if (not self.GetMinion) then
 				tgminion = GetTheClosetMinion()
 				if (not tgminion) then
-					BlockMinion.targetMinion = nil
+					self.targetMinion = nil
 					return
 				end
-				BlockMinion.targetMinion = tgminion
-				BlockMinion.GetMinion = true
+				self.targetMinion = tgminion
+				self.GetMinion = true
 			end
 			if (tgminion) then
 				local minionAI = tgminion.AsAI
@@ -1668,150 +1673,23 @@ function BlockMinion.OnUpdate()
 	end
 end
 
-function BlockMinion.OnDraw()
+function BlockMinion:OnDraw()
 	if (BlockMinion.Menu.BM_Key.Value) then
 		local cond = BlockCondition()
-		BlockMinion.ToggleCondition = cond
+		self.ToggleCondition = cond
 		if (cond) then
 			local color = 0x00FF00FF
-			local str = BlockMinion.FindingMsg
-			local tg = BlockMinion.targetMinion
+			local str = self.FindingMsg
+			local tg = self.targetMinion
 			if (tg) then
 				local tgMinion = tg.AsAI
 				if (tgMinion) then
 					Renderer.DrawCircle3D(tgMinion.Position, 50, 15, 1, color)
-					str = BlockMinion.BlockOnMsg
+					str = self.BlockOnMsg
 				end
 			end
 			local adjust = Renderer.WorldToScreen(Player.Position) + Vector(0, 20, 0)
-			Renderer.DrawText(adjust, BlockMinion.TextClipper, str, color)
-		end
-	end
-end
-
---[[
-	███████ ███████ ██    ██ ████████ ██ ██      ██ ████████ ██    ██ 
-	██      ██      ██    ██    ██    ██ ██      ██    ██     ██  ██  
-	███████ ███████ ██    ██    ██    ██ ██      ██    ██      ████   
-	     ██      ██ ██    ██    ██    ██ ██      ██    ██       ██    
-	███████ ███████  ██████     ██    ██ ███████ ██    ██       ██                                                            
-]]
-
-function SSUtility.Init()
-
-	SSUtility.Flash = {["SummonerFlash"]= 1, ["SummonerTeleport"]= 2}
-	SSUtility.Ingite = "SummonerDot"
-	SSUtility.Slot = {-1, -1}
-	local HasSS = false;
-	for i=Enums.SpellSlots.Summoner1, Enums.SpellSlots.Summoner2 do
-		local flash = Player:GetSpell(i)
-		local flashTable = SSUtility.Flash[flash.Name]
-		if( flash and flashTable) then
-			HasSS = true
-			SSUtility.Slot[flashTable] = i
-		end
-	end
-
-	if( not HasSS ) then
-		SSUtility.Menu = nil
-		SSUtility.OnCastSpell = nil
-		SSUtility.Flash = nil
-		SSUtility.Slot = nil
-		SSUtility.Ingite = nil
-	end
-	SSUtility.Menu()
-	
-end
-
-function SSUtility.Menu()
-	SSUtility.Menu = Menu:AddMenu("SU_Menu", "SSUtility")
-	SSUtility.Menu:AddBool("SU_Ignite", "Block Flash 1", true)
-	SSUtility.Menu:AddLabel("SU_IgniteLabel", "^- If you die from Ignite")
-	SSUtility.Menu:AddBool("SU_OverWall", "Block Flash 2", true)
-	SSUtility.Menu:AddLabel("SU_OverWallLabel", "^- If you can't flash over the wall")
-	SSUtility.Menu:AddBool("SU_ExtendedFlash", "Use Extended Flash", true)
-	SSUtility.Menu:AddBool("SU_NearTP", "Block TP", true)
-	SSUtility.Menu:AddLabel("SU_NearTPLabel", "^- If you tp too close location")
-end
-
-
-local function GetIgniteDmg(duration, level)
-	return floor(duration)*(50+20*level)/5
-end
-
--- All credits go to Thron, I basically copy pasted it from his source
-local function GetClosestNonWall(position)
-	local wholeCircle = 2.0*math.pi
-	local stepRadius = 40.0
-	local posChecked = 0
-	local indexRadius = 0
-	while (posChecked < 500) do
-		indexRadius = indexRadius +1
-		local curRadius = indexRadius*stepRadius
-		if ( curRadius > 500 ) then
-			break
-		end
-		local curCircleChecks = math.ceil( (wholeCircle * curRadius) / stepRadius )
-
-		for i=1, curCircleChecks do
-			posChecked = posChecked+1
-			local rotationAngle = ( (wholeCircle / (curCircleChecks - 1)) * i )
-			local pos = Vector(position.x + curRadius *  math.sin(rotationAngle), 0, position.z + curRadius *  math.cos(rotationAngle))
-			if( not Nav.IsWall( pos)) then
-				return pos
-			end
-		end
-	end
-end
-
-function SSUtility.OnCastSpell(Args)
-	local menu = SSUtility.Menu
-	local slot = SSUtility.Slot
-
-	-- flash
-	if ( Args.Slot == slot[1]) then
-		if ( menu.SU_Ignite.Value ) then
-			local buff = Player:GetBuff(SSUtility.Ingite)
-			if (buff) then
-				local dmg = GetIgniteDmg(buff.DurationLeft, buff.Source.AsHero.Level)
-				if ( Player.Health <= dmg) then
-					Args.Process = false;
-				end	
-			end
-		end
-
-		if ( menu.SU_OverWall.Value ) then
-			local mousePos = Renderer.GetMousePos()
-			local IsWall = Player.Position:Extended(mousePos, 450)
-			if ( Nav.IsWall(IsWall)) then
-				local nonWallPos = GetClosestNonWall( IsWall)
-				if ( nonWallPos ) then
-					local distancePlayer = nonWallPos:Distance(Player.Position)
-					if( distancePlayer < 450) then
-						Args.Process = false;
-					end
-
-				end
-			end
-		end
-
-		if( menu.SU_ExtendedFlash.Value ) then
-			local distance = Player:Distance(Args.TargetEndPosition)
-			if( distance < 400) then
-				local extended = Player.Position:Extended(Args.TargetEndPosition, 450)
-				Args.Process = false
-				Input.Cast(slot[1], extended)
-			end
-		end
-	end
-
-	-- tp
-	if ( Args.Slot == slot[2]) then
-		if( menu.SU_NearTP.Value ) then
-			local distance = Player:Distance(Args.TargetEndPosition)
-			if( distance < 550) then
-				Args.Process = false
-			end
+			Renderer.DrawText(adjust, self.TextClipper, str, color)
 		end
 	end
 end
@@ -1825,27 +1703,23 @@ end
 ]]
 
 function OnUnkillableMinion(minion)
-	Activator.OnUnkillableMinion(minion)
+	Activator:OnUnkillableMinion(minion)
 end
 
 function OnUpdate()
-	BlockMinion.OnUpdate()
+	BlockMinion:OnUpdate()
 end
 
 function OnIssueOrder(Args)
-	TurnAround.OnIssueOrder(Args)
+	TurnAround:OnIssueOrder(Args)
 end
 
 function OnProcessSpell(obj, spellcast)
-	TurnAround.OnProcessSpell(obj, spellcast)
+	TurnAround:OnProcessSpell(obj, spellcast)
 end
 
 function OnNewPath(obj, pathing)
-	PathTracker.OnNewPath(obj, pathing)
-end
-
-function OnCastSpell(Args)
-	SSUtility.OnCastSpell(Args)
+	PathTracker:OnNewPath(obj, pathing)
 end
 
 function OnTick()
@@ -1855,7 +1729,7 @@ function OnTick()
 		for i = 1, #FeaturedClasses do
 			local onTick = FeaturedClasses[i].OnTick
 			if (onTick ~= nil) then
-				onTick()
+				FeaturedClasses[i]:OnTick()
 			end
 		end
 	end
@@ -1865,7 +1739,7 @@ function OnDraw()
 	for i = 1, #FeaturedClasses do
 		local onDraw = FeaturedClasses[i].OnDraw
 		if (onDraw ~= nil) then
-			onDraw()
+			FeaturedClasses[i]:OnDraw()
 		end
 	end
 end
@@ -1877,7 +1751,7 @@ function OnCreate(obj)
 	for i = 1, #FeaturedClasses do
 		local onCreate = FeaturedClasses[i].OnCreate
 		if (onCreate ~= nil) then
-			onCreate(obj)
+			FeaturedClasses[i]:OnCreate(obj)
 		end
 	end
 end
@@ -1889,7 +1763,7 @@ function OnDelete(obj)
 	for i = 1, #FeaturedClasses do
 		local onDelete = FeaturedClasses[i].OnDelete
 		if (onDelete ~= nil) then
-			onDelete(obj)
+			FeaturedClasses[i]:OnDelete(obj)
 		end
 	end
 end
@@ -1903,13 +1777,12 @@ function OnLoad()
 	EventManager.RegisterCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
 	EventManager.RegisterCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
 	EventManager.RegisterCallback(Enums.Events.OnNewPath, OnNewPath)
-	EventManager.RegisterCallback(Enums.Events.OnCastSpell, OnCastSpell)
 	EventManager.RegisterCallback(Enums.Events.OnUnkillableMinion, OnUnkillableMinion)
 
 	for i = 1, #FeaturedClasses do
 		local Init = FeaturedClasses[i].Init
 		if (Init ~= nil) then
-			Init()
+			FeaturedClasses[i]:Init()
 		end
 	end
 	print("[E2Slayer] E2Utility is Loaded - " .. format("%.1f", Version))
