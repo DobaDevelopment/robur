@@ -1714,6 +1714,7 @@ function SSUtility.Init()
 	end
 
 	if( not HasSS ) then
+		EventManager.RemoveCallback(Enums.Events.OnCastSpell, OnCastSpell)
 		SSUtility.OnCastSpell = nil
 		SSUtility.Flash = nil
 		SSUtility.Slot = nil
