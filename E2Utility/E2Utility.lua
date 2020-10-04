@@ -296,7 +296,8 @@ function JungleTimer.OnDraw()
 end
 
 local function TimerStarter(objHandle)
-	local ObjectAI = ObjManager.GetObjectByHandle(objHandle).AsAI
+	local Object = ObjManager.GetObjectByHandle(objHandle)
+	local ObjectAI = Object.AsAI
 	if (ObjectAI) then
 		local JungleMobsData = JungleTimer.JungleMobsData
 		local buff = ObjectAI:GetBuff(JungleTimer.ObjBuffNameSTR)
@@ -315,7 +316,7 @@ function JungleTimer.OnCreate(obj)
 	-- Jungle Timer
 	local menu = JungleTimer.Menu
 	if (menu.JGT_ToggleTimer.Value and JungleTimer.ObjName[obj.Name]) then
-		delay(100, TimerStarter, JungleTimer, obj.Handle)
+		delay(100, TimerStarter, obj.Handle)
 	end
 end
 
@@ -1713,7 +1714,6 @@ function SSUtility.Init()
 	end
 
 	if( not HasSS ) then
-		SSUtility.Menu = nil
 		SSUtility.OnCastSpell = nil
 		SSUtility.Flash = nil
 		SSUtility.Slot = nil
