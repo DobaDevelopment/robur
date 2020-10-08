@@ -2,7 +2,7 @@ require("common.log")
 module("E2Utility", package.seeall, log.setup)
 
 local _Core = _G.CoreEx
-local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, Collision, Orbwalker, Prediction, Nav, HitChance =
+local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, Collision, Orbwalker, Prediction, Nav =
 	_Core.ObjectManager,
 	_Core.EventManager,
 	_Core.Input,
@@ -14,8 +14,7 @@ local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, 
 	_G.Libs.CollisionLib,
 	_G.Libs.Orbwalker,
 	_G.Libs.Prediction,
-	_G.CoreEx.Nav,
-	_G.CoreEx.Enums.HitChance
+	_G.CoreEx.Nav
 local itemID = require("lol\\Modules\\Common\\itemID")
 local SpellSlots, SpellStates = Enums.SpellSlots, Enums.SpellStates
 local Player = ObjManager.Player
@@ -27,7 +26,7 @@ local format = string.format
 -- Copied from Mista's scripts :)
 
 -- Verision
-local Version = 2.0
+local Version = 1.9
 
 local Profiler = _G.Libs.Profiler
 
@@ -45,7 +44,6 @@ local TowerRanges = {}
 local PathTracker = {}
 local BlockMinion = {}
 local SSUtility = {}
-local RecallTracker = {}
 
 local FeaturedClasses = {
 	JungleTimer,
@@ -58,24 +56,23 @@ local FeaturedClasses = {
 	TowerRanges,
 	PathTracker,
 	BlockMinion,
-	SSUtility,
-	RecallTracker
+	SSUtility
 }
 local TextClipper = Vector(30, 15, 0)
 local TickCount = 0
 
 ---@param arg number(float)
----@return number
+---@return number 
 local function GetHash(arg)
 	return (floor(arg) % 1000)
 end
 
 -- Creadit to Thorn
 ---@param seconds number(float)
----@return string
+---@return string 
 local function SecondsToClock(seconds)
-	local m, s = floor(seconds / 60), floor(seconds % 60)
-	return m .. ":" .. (s < 10 and 0 or "") .. s
+	local m, s = floor(seconds/60), floor(seconds%60)
+	return m..":"..(s < 10 and 0 or "")..s
 end
 
 --[[
@@ -85,11 +82,12 @@ end
    ██   ██ ██    ██ ██  ██ ██ ██    ██ ██      ██             ██    ██ ██  ██  ██ ██      ██   ██ 
     █████   ██████  ██   ████  ██████  ███████ ███████        ██    ██ ██      ██ ███████ ██   ██                                                                                                                                                                                          
 ]]
+
 function JungleTimer.Init()
 	-- A Bool to end Rift timer
 	JungleTimer.RiftOver = false
 	JungleTimer.TotalCamps = 16
-	JungleTimer.ObjName = {["CampRespawn"] = true}
+	JungleTimer.ObjName = { ["CampRespawn"] = true }
 	JungleTimer.ObjBuffNameSTR = "camprespawncountdownhidden"
 	-- [id] hashtable ID
 	-- ["m_name"] Name for the menu
@@ -252,7 +250,7 @@ end
 function JungleTimer.OnDraw()
 	-- ForLooping only table has at least one element
 	local menu = JungleTimer.Menu
-	if (menu.JGT_ToggleTimer.Value and #JungleTimer.JungleTimerTable > 0) then
+	if (menu.JGT_ToggleTimer.Value and #JungleTimer.JungleTimerTable > 0 ) then
 		local currentGameTime = Game:GetTime()
 		local totalCamps = JungleTimer.TotalCamps
 		local JungleMobsData = JungleTimer.JungleMobsData
@@ -334,6 +332,7 @@ function JungleTimer.OnDelete(obj)
 	end
 end
 
+
 --[[
 	 ██████ ██       ██████  ███    ██ ███████     ████████ ██████   █████   ██████ ██   ██ ███████ ██████  
 	██      ██      ██    ██ ████   ██ ██             ██    ██   ██ ██   ██ ██      ██  ██  ██      ██   ██ 
@@ -341,6 +340,7 @@ end
 	██      ██      ██    ██ ██  ██ ██ ██             ██    ██   ██ ██   ██ ██      ██  ██  ██      ██   ██ 
 	 ██████ ███████  ██████  ██   ████ ███████        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                      
 ]]
+
 function CloneTracker.Init()
 	-- Clone Tracker Variables
 	CloneTracker.CloneEnum = {}
@@ -463,6 +463,7 @@ function CloneTracker.OnDelete(obj)
 	end
 end
 
+
 --[[
 	██ ███    ██ ██   ██ ██ ██████  ██ ████████  ██████  ██████  ███████     ████████ ██ ███    ███ ███████ ██████  
 	██ ████   ██ ██   ██ ██ ██   ██ ██    ██    ██    ██ ██   ██ ██             ██    ██ ████  ████ ██      ██   ██ 
@@ -470,6 +471,7 @@ end
 	██ ██  ██ ██ ██   ██ ██ ██   ██ ██    ██    ██    ██ ██   ██      ██        ██    ██ ██  ██  ██ ██      ██   ██ 
 	██ ██   ████ ██   ██ ██ ██████  ██    ██     ██████  ██   ██ ███████        ██    ██ ██      ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                     
 ]]
+
 function InhibitorsTimer.Init()
 	InhibitorsTimer.InhibitorsTable = {
 		-- Blue Top, Mid, Bot
@@ -609,6 +611,7 @@ end
 	██   ██ ██   ██ ██   ██ ██    ██ ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██ ██    ██ ██  ██ ██        ██    ██   ██ ██   ██ ██      ██  ██  ██      ██   ██ 
 	██████  ██   ██ ██   ██  ██████   ██████  ██   ████ ██████  ██   ██ ██   ██  ██████  ██   ████        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                     
 ]]
+
 function DragonBaronTracker.Init()
 	--[[
 		IsDragon: 1 - Dragon, 2 - Baron
@@ -625,28 +628,13 @@ function DragonBaronTracker.Init()
 	DragonBaronTracker.BaronMessage = "BARON IS UNDER ATTACK"
 	DragonBaronTracker.DragonBaronStatus = {2, 2}
 	local playerResolution = Renderer.GetResolution()
-	DragonBaronTracker.AlertPosition =
-		Vector(floor(playerResolution.x) * 0.5 - 80.0, floor(playerResolution.y) * 0.16666666666, 0)
-	DragonBaronTracker.AlertRectPosition =
-		Vector(
-		DragonBaronTracker.AlertPosition.x - 15,
-		DragonBaronTracker.AlertPosition.y,
-		DragonBaronTracker.AlertPosition.z
-	)
-	DragonBaronTracker.BaronAlertPosition =
-		Vector(
-		DragonBaronTracker.AlertPosition.x,
-		DragonBaronTracker.AlertPosition.y - 20,
-		DragonBaronTracker.AlertPosition.z
-	)
+	DragonBaronTracker.AlertPosition = Vector(floor(playerResolution.x) * 0.5 - 80.0, floor(playerResolution.y) * 0.16666666666, 0)
+	DragonBaronTracker.AlertRectPosition = Vector(DragonBaronTracker.AlertPosition.x - 15, DragonBaronTracker.AlertPosition.y, DragonBaronTracker.AlertPosition.z)
+	DragonBaronTracker.BaronAlertPosition = Vector(DragonBaronTracker.AlertPosition.x, DragonBaronTracker.AlertPosition.y - 20, DragonBaronTracker.AlertPosition.z)
 	DragonBaronTracker.BaronRectAlertPosition =
-		Vector(
-		DragonBaronTracker.BaronAlertPosition.x - 15,
-		DragonBaronTracker.BaronAlertPosition.y,
-		DragonBaronTracker.BaronAlertPosition.z
-	)
-	DragonBaronTracker.BaronActiveStatus = 0
-	DragonBaronTracker.TextClipper = Vector(200, 15, 0)
+		Vector(DragonBaronTracker.BaronAlertPosition.x - 15, DragonBaronTracker.BaronAlertPosition.y, DragonBaronTracker.BaronAlertPosition.z)
+		DragonBaronTracker.BaronActiveStatus = 0
+		DragonBaronTracker.TextClipper = Vector(200, 15, 0)
 
 	DragonBaronTracker.Menu()
 end
@@ -693,33 +681,13 @@ function DragonBaronTracker.OnDraw()
 		menu = DragonBaronTracker.Menu.DBT_Settings
 		-- Maybe I can reduce below lines later..
 		if (menu.DBT_DragonToggle.Value and DragonBaronTracker.DragonBaronStatus[1] == 1) then
-			Renderer.DrawFilledRect(
-				DragonBaronTracker.AlertRectPosition,
-				DragonBaronTracker.TextClipper,
-				2,
-				menu.DBT_DragonBGCol.Value
-			)
-			Renderer.DrawText(
-				DragonBaronTracker.AlertPosition,
-				DragonBaronTracker.TextClipper,
-				DragonBaronTracker.DragonMessage,
-				menu.DBT_DragonTextCol.Value
-			)
+			Renderer.DrawFilledRect(DragonBaronTracker.AlertRectPosition, DragonBaronTracker.TextClipper, 2, menu.DBT_DragonBGCol.Value)
+			Renderer.DrawText(DragonBaronTracker.AlertPosition, DragonBaronTracker.TextClipper, DragonBaronTracker.DragonMessage, menu.DBT_DragonTextCol.Value)
 		end
 
 		if (menu.DBT_BaronToggle.Value and DragonBaronTracker.DragonBaronStatus[2] == 1) then
-			Renderer.DrawFilledRect(
-				DragonBaronTracker.BaronRectAlertPosition,
-				DragonBaronTracker.TextClipper,
-				2,
-				menu.DBT_BaronBGCol.Value
-			)
-			Renderer.DrawText(
-				DragonBaronTracker.BaronAlertPosition,
-				DragonBaronTracker.TextClipper,
-				DragonBaronTracker.BaronMessage,
-				menu.DBT_BaronTextCol.Value
-			)
+			Renderer.DrawFilledRect(DragonBaronTracker.BaronRectAlertPosition, DragonBaronTracker.TextClipper, 2, menu.DBT_BaronBGCol.Value)
+			Renderer.DrawText(DragonBaronTracker.BaronAlertPosition, DragonBaronTracker.TextClipper, DragonBaronTracker.BaronMessage, menu.DBT_BaronTextCol.Value)
 		end
 	end
 end
@@ -731,6 +699,7 @@ end
 	██      ██    ██ ██    ██ ██      ██   ██ ██    ██ ██ ███ ██ ██  ██ ██        ██    ██   ██ ██   ██ ██      ██  ██  ██      ██   ██ 
 	 ██████  ██████   ██████  ███████ ██████   ██████   ███ ███  ██   ████        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                                                                                                                                                                                   
 ]]
+
 function CooldownTracker.Init()
 	CooldownTracker.Heroes = {true, true, true, true, true, true, true, true, true, true}
 	CooldownTracker.StringFormat = "%.f"
@@ -1027,12 +996,7 @@ function CooldownTracker.OnDraw()
 								Renderer.DrawFilledRect(pos, pctPos, 1, color2)
 								Renderer.DrawRectOutline(pos, SpellBoxVector, 2, 2, CooldownTracker.BoxOutline)
 								pos = Vector(pos.x + 4, pos.y + 7, 0)
-								Renderer.DrawText(
-									pos,
-									TextClipper,
-									format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown),
-									CooldownTracker.TextColor
-								)
+								Renderer.DrawText(pos, TextClipper, format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown), CooldownTracker.TextColor)
 							else
 								Renderer.DrawFilledRect(pos, SpellBoxVector, 2, color)
 								Renderer.DrawRectOutline(pos, SpellBoxVector, 2, 2, CooldownTracker.BoxOutline)
@@ -1042,7 +1006,7 @@ function CooldownTracker.OnDraw()
 
 					local ssBox = CooldownTracker.SSBoxVector
 					hpPos = objHero.HealthBarScreenPos
-					if (adjustment[1] == 2 and CooldownTracker.CDTracker_Adjustment.Value) then
+					if (adjustment[1] == 2 and CooldownTracker.S_Menu_Adjust.Value) then
 						hpPos = hpPos + adjustment[2]
 					end
 
@@ -1053,12 +1017,7 @@ function CooldownTracker.OnDraw()
 							local posText = Vector(hpPos.x + 70, 13 * (i - 1) + hpPos.y - 65, 0)
 							if (copySpell[i].RemainingCooldown > 0) then
 								Renderer.DrawFilledRect(pos, ssBox, 2, CooldownTracker.SummonerSpellsStructure[copySpell[i].Name].CDColor)
-								Renderer.DrawText(
-									posText,
-									TextClipper,
-									format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown),
-									CooldownTracker.TextColorBlack
-								)
+								Renderer.DrawText(posText, TextClipper, format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown), CooldownTracker.TextColorBlack)
 							else
 								Renderer.DrawFilledRect(pos, ssBox, 2, CooldownTracker.SummonerSpellsStructure[copySpell[i].Name].Color)
 							end
@@ -1078,6 +1037,7 @@ end
 	██   ██ ██         ██    ██  ██  ██  ██   ██    ██    ██    ██ ██   ██ 
 	██   ██  ██████    ██    ██   ████   ██   ██    ██     ██████  ██   ██                                                                                                                                                                                                                                                                                                                                      
 ]]
+
 function Activator.Init()
 	Activator.EnumMode = {"Combo", "Harass"}
 	Activator.EnumOffensiveType = {
@@ -1154,16 +1114,8 @@ function Activator.Init()
 			Name = "Hextech GLP-800",
 			Type = Activator.EnumOffensiveType.NonTargeted,
 			Range = 1000,
-			PredictionInput = {
-				Range=1000,
-				Width=30,
-				Radius=15,
-				Speed=2000, 
-				Delay=0.25,
-				Collisions={ Minions=true, WindWall=true },
-				Type="Linear",
-				UseHitbox=true
-			},
+			Speed = 2000,
+			Delay = 0.25,
 			EnemyHealth = 80,
 			MyHealth = 35,
 			MenuName = "GLP",
@@ -1173,16 +1125,8 @@ function Activator.Init()
 			Name = "Hextech Protobelt-01",
 			Type = Activator.EnumOffensiveType.NonTargeted,
 			Range = 400,
-			PredictionInput = {
-				Range=400,
-				Width=30,
-				Radius=15,
-				Speed=1150, 
-				Delay=0,
-				Collisions={WindWall=true },
-				Type="Linear",
-				UseHitbox=true
-			},
+			Speed = 1150,
+			Delay = 0,
 			EnemyHealth = 80,
 			MyHealth = 35,
 			MenuName = "Protobelt",
@@ -1199,25 +1143,21 @@ function Activator.Menu()
 	for k, v in pairs(Activator.Offensive) do
 		local menuName = v.MenuName
 		Activator.Menu.Offensive:AddMenu(menuName, v.Name)
-		v.Menu.EnemyHealth =
-			Activator.Menu.Offensive[menuName]:AddSlider(menuName .. "EnemyHealth", "Enemy Health %", 0, 100, 1, v.EnemyHealth)
-		v.Menu.MyHealth =
-			Activator.Menu.Offensive[menuName]:AddSlider(menuName .. "MyHealth", "My Health %", 0, 100, 1, v.MyHealth)
+		v.Menu.EnemyHealth = Activator.Menu.Offensive[menuName]:AddSlider(menuName .. "EnemyHealth", "Enemy Health %", 0, 100, 1, v.EnemyHealth)
+		v.Menu.MyHealth = Activator.Menu.Offensive[menuName]:AddSlider(menuName .. "MyHealth", "My Health %", 0, 100, 1, v.MyHealth)
 		v.Menu.Active = Activator.Menu.Offensive[menuName]:AddBool(menuName .. "_Toggle", "Active " .. v.Name, true)
 	end
 
 	local mName = Activator.Offensive[itemID.Tiamat].MenuName
-	Activator.Offensive[itemID.Tiamat].Menu.FarmActive =
-		Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Tiamet during Farming", true)
+	Activator.Offensive[itemID.Tiamat].Menu.FarmActive = Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Tiamet during Farming", true)
 	mName = Activator.Offensive[itemID.RavenousHydra].MenuName
-	Activator.Offensive[itemID.RavenousHydra].Menu.FarmActive =
-		Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Hydra during Farming", true)
+	Activator.Offensive[itemID.RavenousHydra].Menu.FarmActive = Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Hydra during Farming", true)
 
 	Activator.Menu.Offensive:AddBool("FocusedOnly", "Use items on Focused Target ONLY", true)
 	Activator.Menu.Offensive:AddBool("ATOF_Toggle", "Use Offensive Items", true)
 end
 
-local function FocusedCondition(Range)
+local function FocusedCondition (Range)
 	local focusedT = TS:GetForcedTarget()
 	local toggle = Activator.Menu.Offensive.FocusedOnly.Value
 	local target = TS:GetTarget(Range)
@@ -1226,7 +1166,8 @@ end
 
 function Activator.OnTick()
 	local menu = Activator.Menu.Offensive
-	if (menu.ATOF_Toggle.Value) then
+	if ( menu.ATOF_Toggle.Value ) then
+
 		if (Orbwalker.GetMode() == Activator.EnumMode[1]) then
 			local target = TS:GetTarget(1000)
 			if (target == nil) then
@@ -1245,9 +1186,10 @@ function Activator.OnTick()
 							elseif (item.Type == Activator.EnumOffensiveType.Active) then
 								Input.Cast(itemslot)
 							elseif (item.Type == Activator.EnumOffensiveType.NonTargeted) then
-								local prediction = Prediction.GetPredictedPosition(target, item.PredictionInput, Player.Position)
-								if prediction.HitChanceEnum >= HitChance.Medium then
-									Input.Cast(itemslot, prediction.CastPosition)
+								-- Credit to Thron's Ashe
+								local collision = Collision.SearchMinions(Player.Position, target.Position, 30, item.Speed, item.Delay * 1000, 1)
+								if not collision.Result then
+									Input.Cast(itemslot, target.Position)
 								end
 							end
 						end
@@ -1259,19 +1201,19 @@ function Activator.OnTick()
 end
 
 local function IsTiamentOrHydra(_ItemID)
-	local temp = {[itemID.Tiamat] = true, [itemID.RavenousHydra] = true}
+	local temp = {[itemID.Tiamat] = true , [itemID.RavenousHydra] = true}
 	return (temp[_ItemID] and Activator.Offensive[_ItemID].Menu.FarmActive.Value)
 end
 
 function Activator.OnUnkillableMinion(minion)
 	local menu = Activator.Menu.Offensive
-	if (menu.ATOF_Toggle.Value) then
+	if ( menu.ATOF_Toggle.Value ) then
 		if (minion:Distance(Player) <= Activator.Offensive[itemID.Tiamat].Range) then
 			for k, v in pairs(Player.Items) do
 				local itemslot = k + 6
 				local cond = IsTiamentOrHydra(v.ItemId)
-				if (cond) then
-					local item = Activator.Offensive[v.ItemId]
+				if ( cond ) then
+				local item = Activator.Offensive[v.ItemId]
 					if (item and item.Menu.Active.Value and Player:GetSpellState(itemslot) == SpellStates.Ready) then
 						Input.Cast(itemslot, minion)
 					end
@@ -1301,6 +1243,7 @@ end
        ██    ██    ██ ██   ██ ██  ██ ██ ██   ██ ██   ██ ██    ██ ██    ██ ██  ██ ██ ██   ██ 
 	   ██     ██████  ██   ██ ██   ████ ██   ██ ██   ██  ██████   ██████  ██   ████ ██████                                                                                                                                                                                                                                                                                                                                                                                                                        
 ]]
+
 function TurnAround.Init()
 	TurnAround.TurnAroundActive = false
 	TurnAround.SpellData = {
@@ -1382,6 +1325,7 @@ end
 	   ██    ██    ██ ██ ███ ██ ██      ██   ██     ██   ██ ██   ██ ██  ██ ██ ██    ██ ██           ██ 
 	   ██     ██████   ███ ███  ███████ ██   ██     ██   ██ ██   ██ ██   ████  ██████  ███████ ███████                                                                                                                                                                                                                                                                                                                                                                                                                    
 ]]
+
 function TowerRanges.Init()
 	local FountainTurrets = {["Turret_OrderTurretShrine_A"] = false, ["Turret_ChaosTurretShrine_A"] = false}
 	TowerRanges.TurretNames = {["SRU_Chaos_Turret1_Explode.troy"] = true, ["SRU_Order_Turret1_Explode.troy"] = true}
@@ -1517,6 +1461,7 @@ end
 	██      ██   ██    ██    ██   ██        ██    ██   ██ ██   ██ ██      ██  ██  ██      ██   ██ 
 	██      ██   ██    ██    ██   ██        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
 ]]
+
 function PathTracker.Init()
 	PathTracker.HeroList = {}
 	PathTracker.DrawBox = Vector(15, 15, 0)
@@ -1566,7 +1511,6 @@ function PathTracker.OnDraw()
 			local IsOnScreen = Renderer.IsOnScreen
 
 			if (v ~= 0 and #v.Waypoints > 1 and value[1].IsVisible) then
-				local vEndPos = v.EndPos
 				for i = v.CurrentWaypoint, #v.Waypoints - 1 do
 					local startPos, endPos = 0, v.Waypoints[i + 1]
 					if (i == v.CurrentWaypoint) then
@@ -1578,7 +1522,7 @@ function PathTracker.OnDraw()
 						Renderer.DrawLine3D(startPos, endPos, 1, 0xFFFF00FF)
 					end
 				end
-				
+				local vEndPos = v.EndPos
 				if (IsOnScreen(vEndPos)) then
 					local color = PathTracker.Menu.PT_ETAColor.Value
 					if (PathTracker.Menu.PT_CharName.Value) then
@@ -1610,13 +1554,8 @@ function PathTracker.OnNewPath(obj, pathing)
 		if (Handle) then
 			local enemy = PathTracker.HeroList[Handle]
 			if (enemy) then
-				local minDis = pathing.EndPos:Distance(pathing.StartPos)
-				if( minDis < 100) then
-					return
-				end
 				PathTracker.HeroList[Handle][2] = pathing
 				if (PathTracker.Menu.PT_ETA.Value) then
-					
 					local ETA = 0.0
 					local movespeed = obj.MoveSpeed
 					for i = 1, #pathing.Waypoints - 1 do
@@ -1641,6 +1580,7 @@ end
 	██   ██ ██      ██    ██ ██      ██  ██      ██  ██  ██ ██ ██  ██ ██ ██ ██    ██ ██  ██ ██ 
 	██████  ███████  ██████   ██████ ██   ██     ██      ██ ██ ██   ████ ██  ██████  ██   ████                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
 ]]
+
 function BlockMinion.Init()
 	BlockMinion.TargetMinion = nil
 	BlockMinion.GetMinion = false
@@ -1757,21 +1697,23 @@ end
 	     ██      ██ ██    ██    ██    ██ ██      ██    ██       ██    
 	███████ ███████  ██████     ██    ██ ███████ ██    ██       ██                                                            
 ]]
+
 function SSUtility.Init()
-	SSUtility.Flash = {["SummonerFlash"] = 1, ["SummonerTeleport"] = 2}
+
+	SSUtility.Flash = {["SummonerFlash"]= 1, ["SummonerTeleport"]= 2}
 	SSUtility.Ingite = "SummonerDot"
 	SSUtility.Slot = {-1, -1}
-	local HasSS = false
-	for i = Enums.SpellSlots.Summoner1, Enums.SpellSlots.Summoner2 do
+	local HasSS = false;
+	for i=Enums.SpellSlots.Summoner1, Enums.SpellSlots.Summoner2 do
 		local flash = Player:GetSpell(i)
 		local flashTable = SSUtility.Flash[flash.Name]
-		if (flash and flashTable) then
+		if( flash and flashTable) then
 			HasSS = true
 			SSUtility.Slot[flashTable] = i
 		end
 	end
 
-	if (not HasSS) then
+	if( not HasSS ) then
 		EventManager.RemoveCallback(Enums.Events.OnCastSpell, OnCastSpell)
 		SSUtility.OnCastSpell = nil
 		SSUtility.Flash = nil
@@ -1779,6 +1721,7 @@ function SSUtility.Init()
 		SSUtility.Ingite = nil
 	end
 	SSUtility.Menu()
+	
 end
 
 function SSUtility.Menu()
@@ -1792,30 +1735,30 @@ function SSUtility.Menu()
 	SSUtility.Menu:AddLabel("SU_NearTPLabel", "^- If you tp too close location")
 end
 
+
 local function GetIgniteDmg(duration, level)
-	return floor(duration) * (50 + 20 * level) / 5
+	return floor(duration)*(50+20*level)/5
 end
 
 -- All credits go to Thron, I basically copy pasted it from his source
 local function GetClosestNonWall(position)
-	local wholeCircle = 2.0 * math.pi
+	local wholeCircle = 2.0*math.pi
 	local stepRadius = 40.0
 	local posChecked = 0
 	local indexRadius = 0
 	while (posChecked < 500) do
-		indexRadius = indexRadius + 1
-		local curRadius = indexRadius * stepRadius
-		if (curRadius > 500) then
+		indexRadius = indexRadius +1
+		local curRadius = indexRadius*stepRadius
+		if ( curRadius > 500 ) then
 			break
 		end
-		local curCircleChecks = math.ceil((wholeCircle * curRadius) / stepRadius)
+		local curCircleChecks = math.ceil( (wholeCircle * curRadius) / stepRadius )
 
-		for i = 1, curCircleChecks do
-			posChecked = posChecked + 1
-			local rotationAngle = ((wholeCircle / (curCircleChecks - 1)) * i)
-			local pos =
-				Vector(position.x + curRadius * math.sin(rotationAngle), 0, position.z + curRadius * math.cos(rotationAngle))
-			if (not Nav.IsWall(pos)) then
+		for i=1, curCircleChecks do
+			posChecked = posChecked+1
+			local rotationAngle = ( (wholeCircle / (curCircleChecks - 1)) * i )
+			local pos = Vector(position.x + curRadius *  math.sin(rotationAngle), 0, position.z + curRadius *  math.cos(rotationAngle))
+			if( not Nav.IsWall( pos)) then
 				return pos
 			end
 		end
@@ -1827,34 +1770,35 @@ function SSUtility.OnCastSpell(Args)
 	local slot = SSUtility.Slot
 
 	-- flash
-	if (Args.Slot == slot[1]) then
-		if (menu.SU_Ignite.Value) then
+	if ( Args.Slot == slot[1]) then
+		if ( menu.SU_Ignite.Value ) then
 			local buff = Player:GetBuff(SSUtility.Ingite)
 			if (buff) then
 				local dmg = GetIgniteDmg(buff.DurationLeft, buff.Source.AsHero.Level)
-				if (Player.Health <= dmg) then
-					Args.Process = false
-				end
+				if ( Player.Health <= dmg) then
+					Args.Process = false;
+				end	
 			end
 		end
 
-		if (menu.SU_OverWall.Value) then
+		if ( menu.SU_OverWall.Value ) then
 			local mousePos = Renderer.GetMousePos()
 			local IsWall = Player.Position:Extended(mousePos, 450)
-			if (Nav.IsWall(IsWall)) then
-				local nonWallPos = GetClosestNonWall(IsWall)
-				if (nonWallPos) then
+			if ( Nav.IsWall(IsWall)) then
+				local nonWallPos = GetClosestNonWall( IsWall)
+				if ( nonWallPos ) then
 					local distancePlayer = nonWallPos:Distance(Player.Position)
-					if (distancePlayer < 450) then
-						Args.Process = false
+					if( distancePlayer < 450) then
+						Args.Process = false;
 					end
+
 				end
 			end
 		end
 
-		if (menu.SU_ExtendedFlash.Value) then
+		if( menu.SU_ExtendedFlash.Value ) then
 			local distance = Player:Distance(Args.TargetEndPosition)
-			if (distance < 400) then
+			if( distance < 400) then
 				local extended = Player.Position:Extended(Args.TargetEndPosition, 450)
 				Args.Process = false
 				Input.Cast(slot[1], extended)
@@ -1863,195 +1807,11 @@ function SSUtility.OnCastSpell(Args)
 	end
 
 	-- tp
-	if (Args.Slot == slot[2]) then
-		if (menu.SU_NearTP.Value) then
+	if ( Args.Slot == slot[2]) then
+		if( menu.SU_NearTP.Value ) then
 			local distance = Player:Distance(Args.TargetEndPosition)
-			if (distance < 550) then
+			if( distance < 550) then
 				Args.Process = false
-			end
-		end
-	end
-end
-
---[[
-	██████  ███████  ██████  █████  ██      ██          ████████ ██████   █████   ██████ ██   ██ ███████ ██████  
-	██   ██ ██      ██      ██   ██ ██      ██             ██    ██   ██ ██   ██ ██      ██  ██  ██      ██   ██ 
-	██████  █████   ██      ███████ ██      ██             ██    ██████  ███████ ██      █████   █████   ██████  
-	██   ██ ██      ██      ██   ██ ██      ██             ██    ██   ██ ██   ██ ██      ██  ██  ██      ██   ██ 
-	██   ██ ███████  ██████ ██   ██ ███████ ███████        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                         
-]]
-function RecallTracker.Init()
-	RecallTracker.RecallingList = {}
-	RecallTracker.ActiveHeroes = {}
-	RecallTracker.MouseEvent = {[513] = 1, [514] = 2}
-	RecallTracker.Status = {["Invalid"] = 0, ["Started"] = 1, ["Interrupted"] = 2, ["Finished"] = 3}
-	local heroList = ObjManager.Get("enemy", "heroes")
-	for handle, hero in pairs(heroList) do
-		if (hero) then
-			local objHero = hero.AsHero
-			RecallTracker.RecallingList[handle] = {
-				CharName = objHero.CharName,
-				RecallName = 0,
-				Duration = 0,
-				ETA = 0,
-				Status = 0,
-				IsActive = false
-			}
-			-- hate to use table.insert but no choice
-			table.insert(RecallTracker.ActiveHeroes, handle)
-		end
-	end
-	local resolution = Renderer.GetResolution()
-	RecallTracker.DefaultLocation = Vector(resolution.x * 0.70, resolution.y * 0.80, 0)
-	RecallTracker.IsDragging = false
-	RecallTracker.BoxSize = Vector(200, 18, 0)
-	RecallTracker.TestText = " CHAMPION "
-	RecallTracker.Menu()
-end
-
-function RecallTracker.Menu()
-	RecallTracker.Menu = Menu:AddMenu("RT_Menu", "RecallTracker")
-	RecallTracker.Menu:AddBool("RT_Toggle", "Activate Recall Tracker", true)
-	RecallTracker.Menu:AddKeyBind("RT_Key", "Adjust Key (Default: Shift)", 16) -- 16 is Left Shift
-	RecallTracker.Menu:AddBool("RT_AdjustToggle", "Adjust Position", true)
-	RecallTracker.Menu:AddSlider("RT_AdjustX", "Adjust X", -1500, 1000, 10, 0)
-	RecallTracker.Menu:AddSlider("RT_AdjustY", "Adjust Y", -1500, 1000, 10, 0)
-end
-
-local function DecodeRecallStatus(status, name)
-	local returnArray = {"Recall", 0x1972D2FF}
-	local tp = {["SummonerTeleport"] = true}
-	if (tp[name]) then
-		returnArray[1] = "Teleport"
-		returnArray[2] = 0xA901DBFF
-	end
-	if (status == 2) then
-		returnArray[1] = "Interrupted " .. returnArray[1]
-		returnArray[2] = 0xB40404FF
-	elseif (status == 3) then
-		returnArray[1] = "Finished " .. returnArray[1]
-		returnArray[2] = 0x088A08FF
-	end
-	return returnArray
-end
-
-function RecallTracker.OnDraw()
-	if(RecallTracker.Menu.RT_Toggle.Value) then
-		if (RecallTracker.IsDragging) then
-			local mousePos = Renderer.GetCursorPos()
-			local x_diff = mousePos.x - RecallTracker.DefaultLocation.x
-			local y_diff = mousePos.y - RecallTracker.DefaultLocation.y
-			RecallTracker.Menu.RT_AdjustX.Value = x_diff
-			RecallTracker.Menu.RT_AdjustY.Value = y_diff
-		end
-
-		local drawLocation 
-		-- test drawing
-		if (RecallTracker.Menu.RT_Key.Value) then
-			drawLocation =
-			Vector(
-			RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
-			RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
-			0)
-			local boxSize = RecallTracker.BoxSize
-			local testText = RecallTracker.TestText
-			for i = 1, 5 do
-				Renderer.DrawFilledRect(drawLocation, boxSize, 2, 0x132121FF)
-				Renderer.DrawRectOutline(drawLocation, boxSize, 2, 4, 0x17322FFF)
-				Renderer.DrawRectOutline(drawLocation, boxSize, 2, 2, 0x685937FF)
-				Renderer.DrawText(Vector(drawLocation.x + 5, drawLocation.y + 2, 0), boxSize, testText, 0xFFFFFFFF)
-				drawLocation = drawLocation + Vector(0, 23, 0)
-			end
-		else
-			drawLocation =
-			Vector(
-			RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
-			RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
-			0)
-			local boxSize = RecallTracker.BoxSize
-			local count = #RecallTracker.ActiveHeroes
-			for i = 1, count do
-				local target = RecallTracker.RecallingList[RecallTracker.ActiveHeroes[i]]
-				if (target.IsActive) then
-					local eta = target.ETA - OSClock()
-					if (eta < 0.0) then
-						target.IsActive = false
-					else
-						Renderer.DrawFilledRect(drawLocation, boxSize, 2, 0x132121FF)
-						local currentStatus = DecodeRecallStatus(target.Status, target.RecallName)
-						local text = target.CharName .. " " .. currentStatus[1]
-						if (target.Status == 1) then
-							local pct = floor((boxSize.x * (1 / target.Duration) * eta))
-							local pctPos = Vector(pct, boxSize.y, 0)
-							Renderer.DrawFilledRect(drawLocation, pctPos, 1, currentStatus[2])
-							text = text .. " - " .. format("%.1f", eta)
-						else
-							Renderer.DrawFilledRect(drawLocation, boxSize, 1, currentStatus[2])
-						end
-						Renderer.DrawRectOutline(drawLocation, boxSize, 2, 4, 0x17322FFF)
-						Renderer.DrawRectOutline(drawLocation, boxSize, 2, 2, 0x685937FF)
-						Renderer.DrawText(Vector(drawLocation.x + 5, drawLocation.y + 2, 0), boxSize, text, 0xFFFFFFFF)
-						drawLocation = drawLocation + Vector(0, 23, 0)
-					end
-				end
-			end
-		end
-	end
-end
-
-local function GetRecallStatus(status)
-	local currentStatus = RecallTracker.Status[status]
-	if (currentStatus) then
-		return currentStatus
-	end
-	-- Invalid status
-	return 0
-end
-
-local function GetExtraDuration(duration, status)
-	if (duration ~= 0 and status == 1) then
-		return duration
-	end
-	return 3
-end
-
-function RecallTracker.OnTeleport(obj, name, duration_secs, status)
-	if(RecallTracker.Menu.RT_Toggle.Value and obj.IsEnemy) then
-		local i_status = GetRecallStatus(status)
-		local duration = GetExtraDuration(duration_secs, i_status)
-		local ETA = OSClock() + duration
-		local recallHero = RecallTracker.RecallingList[obj.Handle]
-		if( recallHero) then
-			recallHero.RecallName = name
-			recallHero.Duration = duration_secs
-			recallHero.ETA = ETA
-			recallHero.Status = GetRecallStatus(status)
-			recallHero.IsActive = true
-		end
-	end
-end
-
-function RecallTracker.OnMouseEvent(e)
-	if(RecallTracker.Menu.RT_Toggle.Value) then
-		if (RecallTracker.Menu.RT_AdjustToggle.Value) then
-			local event = RecallTracker.MouseEvent[e]
-			-- 513 is Left Mouse Down
-			if (event) then
-				if (event == 1) then
-					local tempLocation =
-						Vector(
-						RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
-						RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
-						0
-					)
-					local mousePos = Renderer.GetCursorPos()
-					local distance = tempLocation:Distance(mousePos)
-					if (distance < 200) then
-						RecallTracker.IsDragging = true
-					end
-				else
-					RecallTracker.IsDragging = false
-				end
 			end
 		end
 	end
@@ -2064,6 +1824,7 @@ end
 	██  ██  ██ ██   ██ ██ ██  ██ ██ 
 	██      ██ ██   ██ ██ ██   ████ 
 ]]
+
 function OnUnkillableMinion(minion)
 	Activator.OnUnkillableMinion(minion)
 end
@@ -2086,14 +1847,6 @@ end
 
 function OnCastSpell(Args)
 	SSUtility.OnCastSpell(Args)
-end
-
-function OnTeleport(obj, name, duration_secs, status)
-	RecallTracker.OnTeleport(obj, name, duration_secs, status)
-end
-
-function OnMouseEvent(e, message, wparam, lparam)
-	RecallTracker.OnMouseEvent(e)
 end
 
 function OnTick()
@@ -2153,8 +1906,6 @@ function OnLoad()
 	EventManager.RegisterCallback(Enums.Events.OnNewPath, OnNewPath)
 	EventManager.RegisterCallback(Enums.Events.OnCastSpell, OnCastSpell)
 	EventManager.RegisterCallback(Enums.Events.OnUnkillableMinion, OnUnkillableMinion)
-	EventManager.RegisterCallback(Enums.Events.OnTeleport, OnTeleport)
-	EventManager.RegisterCallback(Enums.Events.OnMouseEvent, OnMouseEvent)
 
 	for i = 1, #FeaturedClasses do
 		local Init = FeaturedClasses[i].Init
