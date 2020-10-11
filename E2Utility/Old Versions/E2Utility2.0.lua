@@ -27,7 +27,7 @@ local format = string.format
 -- Copied from Mista's scripts :)
 
 -- Verision
-local Version = 2.1
+local Version = 2.0
 
 local Profiler = _G.Libs.Profiler
 
@@ -1042,7 +1042,7 @@ function CooldownTracker.OnDraw()
 
 					local ssBox = CooldownTracker.SSBoxVector
 					hpPos = objHero.HealthBarScreenPos
-					if (adjustment[1] == 2 and menu.CDTracker_Settings.CDTracker_Adjustment.Value) then
+					if (adjustment[1] == 2 and CooldownTracker.CDTracker_Adjustment.Value) then
 						hpPos = hpPos + adjustment[2]
 					end
 
@@ -2032,7 +2032,7 @@ function RecallTracker.OnTeleport(obj, name, duration_secs, status)
 end
 
 function RecallTracker.OnMouseEvent(e)
-	if(RecallTracker.Menu.RT_Toggle.Value and RecallTracker.Menu.IsOpen) then
+	if(RecallTracker.Menu.RT_Toggle.Value) then
 		if (RecallTracker.Menu.RT_AdjustToggle.Value) then
 			local event = RecallTracker.MouseEvent[e]
 			-- 513 is Left Mouse Down
