@@ -1239,7 +1239,7 @@ function Activator.OnTick()
 					target = TS:GetTarget(item.Range)
 					local focusedCond = FocusedCondition(item.Range)
 					if (target and focusedCond) then
-						if (Player.HealthPercent <= item.Menu.MyHealth.Value or target.HealthPercent <= item.Menu.EnemyHealth.Value) then
+						if (Player.HealthPercent <= item.Menu.MyHealth.Value*0.01 or target.HealthPercent <= item.Menu.EnemyHealth.Value*0.01) then
 							if (item.Type == Activator.EnumOffensiveType.Targeted) then
 								Input.Cast(itemslot, target)
 							elseif (item.Type == Activator.EnumOffensiveType.Active) then
