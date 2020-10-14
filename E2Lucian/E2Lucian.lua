@@ -39,7 +39,6 @@ local format = string.format
 
 local TickCount = 0
 local Version = 1.0
-local Menu = _G.Libs.Menu:AddMenu("E2Lucian", "E2Lucian")
 local E2Lucian = {}
 local TS = {}
 
@@ -111,7 +110,7 @@ function E2Lucian.Init()
 end
 
 function E2Lucian.Menu()
-    E2Lucian.Menu = Menu
+    E2Lucian.Menu = _G.Libs.Menu:AddMenu("E2Lucian", "E2Lucian")
     TS = _G.Libs.TargetSelector(E2Lucian.Menu)
 
     E2Lucian.Menu:AddMenu("Combo", "Combo")
