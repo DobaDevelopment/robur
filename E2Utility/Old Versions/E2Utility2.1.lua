@@ -27,7 +27,7 @@ local format = string.format
 -- Copied from Mista's scripts :)
 
 -- Verision
-local Version = 2.2
+local Version = 2.1
 
 local Profiler = _G.Libs.Profiler
 
@@ -46,6 +46,7 @@ local PathTracker = {}
 local BlockMinion = {}
 local SSUtility = {}
 local RecallTracker = {}
+
 local FeaturedClasses = {
 	JungleTimer,
 	CloneTracker,
@@ -1354,23 +1355,20 @@ end
 function TurnAround.OnProcessSpell(obj, spellcast)
 	if (TurnAround.Menu["TA_Toggle"].Value) then
 		local objHero = obj.AsHero
-		local cond = TurnAround.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy 
+		local cond = TurnAround.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy
 		if (cond) then
-			local spelldata = TurnAround.SpellData[objHero.CharName]
-			if (spelldata ) then
-				local spell = spelldata[spellcast.Name]
-				if (objHero and spell) then
-					local condSpell = Player:Distance(objHero.Position) + Player.BoundingRadius <= spell.Range
-					local isFacing = Player:IsFacing(objHero, 120)
-					local condFacing = (isFacing and not spell.FacingFront) or (not isFacing and spell.FacingFront)
-					if (condSpell and condFacing) then
-						local overridePos =
-							objHero.Position:Extended(Player.Position, Player.Position:Distance(objHero.Position) + spell.MoveTo)
-						Input.MoveTo(overridePos)
-						Input.MoveTo(overridePos)
-						TurnAround.LimitIssueOrder = OSClock() + (spell.Delay)
-						delay((spell.PostDealy), Input.MoveTo, TurnAround.OriginalPath)
-					end
+			local spell = TurnAround.SpellData[objHero.CharName][spellcast.Name]
+			if (objHero and spell) then
+				local condSpell = Player:Distance(objHero.Position) + Player.BoundingRadius <= spell.Range
+				local isFacing = Player:IsFacing(objHero, 120)
+				local condFacing = (isFacing and not spell.FacingFront) or (not isFacing and spell.FacingFront)
+				if (condSpell and condFacing) then
+					local overridePos =
+						objHero.Position:Extended(Player.Position, Player.Position:Distance(objHero.Position) + spell.MoveTo)
+					Input.MoveTo(overridePos)
+					Input.MoveTo(overridePos)
+					TurnAround.LimitIssueOrder = OSClock() + (spell.Delay)
+					delay((spell.PostDealy), Input.MoveTo, TurnAround.OriginalPath)
 				end
 			end
 		end
@@ -1384,39 +1382,132 @@ end
 	   ██    ██    ██ ██ ███ ██ ██      ██   ██     ██   ██ ██   ██ ██  ██ ██ ██    ██ ██           ██ 
 	   ██     ██████   ███ ███  ███████ ██   ██     ██   ██ ██   ██ ██   ████  ██████  ███████ ███████                                                                                                                                                                                                                                                                                                                                                                                                                    
 ]]
+function TowerRanges.Init()
+	local FountainTurrets = {["Turret_OrderTurretShrine_A"] = false, ["Turret_ChaosTurretShrine_A"] = false}
+	TowerRanges.TurretNames = {["SRU_Chaos_Turret1_Explode.troy"] = true, ["SRU_Order_Turret1_Explode.troy"] = true}
+	TowerRanges.TurretHashList = {
+		866,
+		327,
+		624,
+		955,
+		767,
+		134,
+		318,
+		943,
+		481,
+		611,
+		52,
+		504,
+		919,
+		281,
+		846,
+		48,
+		651,
+		981,
+		512,
+		169,
+		748,
+		177
+	}
+	local TurretData = {
+		-- red team bot
+		[866] = {Position = Vector(13866, 38, 4505), IsAlly = false},
+		[327] = {Position = Vector(13327, 38, 8226), IsAlly = false},
+		[624] = {Position = Vector(13624, 88, 10572), IsAlly = false},
+		-- red team mid
+		[955] = {Position = Vector(8955, 38, 8510), IsAlly = false},
+		[767] = {Position = Vector(9767, 38, 10113), IsAlly = false},
+		[134] = {Position = Vector(11134, 88, 11207), IsAlly = false},
+		-- red team top
+		[318] = {Position = Vector(4318, 38, 13875), IsAlly = false},
+		[943] = {Position = Vector(7943, 38, 13411), IsAlly = false},
+		[481] = {Position = Vector(10481, 88, 13650), IsAlly = false},
+		-- red team twins
+		[611] = {Position = Vector(12611, 88, 13084), IsAlly = false},
+		[52] = {Position = Vector(13052, 88, 12612), IsAlly = false},
+		-- blue team bot
+		[504] = {Position = Vector(10504, 41, 1029), IsAlly = false},
+		[919] = {Position = Vector(6919, 43, 1483), IsAlly = false},
+		[281] = {Position = Vector(4281, 86, 1253), IsAlly = false},
+		-- blue team mid
+		[846] = {Position = Vector(5846, 44, 6396), IsAlly = false},
+		[48] = {Position = Vector(5048, 43, 4812), IsAlly = false},
+		[651] = {Position = Vector(3651, 91, 3696), IsAlly = false},
+		-- blue team top
+		[981] = {Position = Vector(981, 37, 10441), IsAlly = false},
+		[512] = {Position = Vector(1512, 42, 6699), IsAlly = false},
+		[169] = {Position = Vector(1169, 87, 4287), IsAlly = false},
+		-- blue team twins
+		[748] = {Position = Vector(1748, 88, 2270), IsAlly = false},
+		[177] = {Position = Vector(2177, 89, 1807), IsAlly = false}
+	}
 
--- Thanks to Thron. All credits go to him. 
-function TowerRanges.Init()    
-    TowerRanges.Menu()
+	TowerRanges.ActiveTurrets = {}
+
+	local TurretList = ObjManager.Get("all", "turrets")
+	for k, turret in pairs(TurretList) do
+		local isAlly = turret.IsAlly
+		local isFountain = FountainTurrets[turret.Name]
+		if (not isFountain) then
+			local hash = GetHash(turret.Position.x)
+			local data = TurretData[hash]
+			if (data) then
+				local test = turret.AsAttackableUnit
+				if (test.IsAlive) then
+					data.IsAlly = isAlly
+					TowerRanges.ActiveTurrets[hash] = data
+				end
+			end
+		end
+	end
+	TowerRanges.MenuStr = "TR"
+	TowerRanges.Menu()
 end
 
 function TowerRanges.Menu()
-    TowerRanges.Menu = Menu:AddMenu("TR_Menu", "TowerRanges")
-    TowerRanges.Menu:AddBool("TR_Enemy", "Track Enemy Towers", true)
-    TowerRanges.Menu:AddRGBAMenu("TR_EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
-    TowerRanges.Menu:AddBool("TR_Ally", "Track Ally Towers", true)
-    TowerRanges.Menu:AddRGBAMenu("TR_AllyColor", "Ally Tower Range Color", 0x00FF00FF)
-    TowerRanges.Menu:AddBool("TR_Toggle", "Activate Tower Ranges", true)
-end
-
-function TowerRanges.DrawRangesForTeam(team_lbl, color)
-    for k, obj in pairs(ObjManager.Get(team_lbl, "turrets")) do
-        if not obj.IsDead and obj.IsOnScreen then
-            Renderer.DrawCircle3D(obj.Position, 870, 25, 1, color)
-        end
-    end
+	TowerRanges.Menu = Menu:AddMenu("TR_Menu", "TowerRanges")
+	TowerRanges.Menu:AddBool("TR_Enemy", "Track Enemy Towers", true)
+	TowerRanges.Menu:AddRGBAMenu("TR_EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
+	TowerRanges.Menu:AddBool("TR_Ally", "Track Ally Towers", true)
+	TowerRanges.Menu:AddRGBAMenu("TR_AllyColor", "Ally Tower Range Color", 0x00FF00FF)
+	TowerRanges.Menu:AddBool("TR_Toggle", "Activate Tower Ranges", true)
 end
 
 function TowerRanges.OnDraw()
-    if TowerRanges.Menu.TR_Toggle.Value then    
-        if TowerRanges.Menu.TR_Ally.Value then
-            TowerRanges.DrawRangesForTeam("ally", TowerRanges.Menu.TR_AllyColor.Value)
-        end    
+	local value = TowerRanges.Menu.TR_Toggle.Value
+	if (value) then
+		for i = 1, #TowerRanges.TurretHashList do
+			local hash = TowerRanges.TurretHashList[i]
+			local turret = TowerRanges.ActiveTurrets[hash]
+			if (turret) then
+				local isScreen = Renderer.IsOnScreen(turret.Position)
+				if (isScreen) then
+					local isTeam = IsTeam(turret.IsAlly, TowerRanges, TowerRanges.MenuStr)
+					if (not turret.IsDestroyed and isTeam) then
+						local color = TeamColor(turret.IsAlly, TowerRanges, TowerRanges.MenuStr)
+						Renderer.DrawCircle3D(turret.Position, 870, 25, 1, color)
+					end
+				end
+			end
+		end
+	end
+end
 
-        if TowerRanges.Menu.TR_Enemy.Value then
-            TowerRanges.DrawRangesForTeam("enemy", TowerRanges.Menu.TR_EnemyColor.Value)
-        end
-    end
+function TowerRanges.OnDelete(obj)
+	local value = TowerRanges.Menu.TR_Toggle.Value
+	if (value) then
+		local name = TowerRanges.TurretNames[obj.Name]
+		if (name) then
+			local hash = GetHash(obj.Position.x)
+			TowerRanges.ActiveTurrets[hash] = nil
+			for i = 1, #TowerRanges.TurretHashList do
+				local hashActive = TowerRanges.TurretHashList[i]
+				if (hash == hashActive) then
+					TowerRanges.TurretHashList[i] = nil
+				end
+			end
+		end
+	end
 end
 
 --[[
@@ -1436,7 +1527,7 @@ function PathTracker.Init()
 	for handle, hero in pairs(heroList) do
 		if (hero) then
 			local ObjHero = hero.AsHero
-			PathTracker.HeroList[handle] = {Hero = ObjHero, Pathing = nil, ETA = 0}
+			PathTracker.HeroList[handle] = {ObjHero, 0, 0}
 			handleCount = handleCount + 1
 			PathTracker.HandleList[handleCount] = handle
 		end
@@ -1466,81 +1557,76 @@ local function ETAToSeconds(Seconds)
 	return format("%02.f", floor(Seconds))
 end
 
-
--- Thanks to Thron
 function PathTracker.OnDraw()
-    if not (PathTracker.Menu["PT_Toggle"].Value) then
-        return
-    end
+	if (PathTracker.Menu["PT_Toggle"].Value) then
+		for i = 1, #PathTracker.HandleList do
+			local value = PathTracker.HeroList[PathTracker.HandleList[i]]
+			local v = value[2]
+			local charName = value[1].CharName
+			local IsOnScreen = Renderer.IsOnScreen
 
-    local IsOnScreen = Renderer.IsOnScreen
+			if (v ~= 0 and #v.Waypoints > 1 and value[1].IsVisible) then
+				local vEndPos = v.EndPos
+				for i = v.CurrentWaypoint, #v.Waypoints - 1 do
+					local startPos, endPos = 0, v.Waypoints[i + 1]
+					if (i == v.CurrentWaypoint) then
+						startPos = value[1].Position
+					else
+						startPos = v.Waypoints[i]
+					end
+					if (IsOnScreen(endPos)) then
+						Renderer.DrawLine3D(startPos, endPos, 1, 0xFFFF00FF)
+					end
+				end
+				
+				if (IsOnScreen(vEndPos)) then
+					local color = PathTracker.Menu.PT_ETAColor.Value
+					if (PathTracker.Menu.PT_CharName.Value) then
+						local drawName = Renderer.WorldToScreen(Vector(vEndPos.x - 30, vEndPos.y, vEndPos.z))
+						Renderer.DrawText(drawName, PathTracker.TextClipper, charName, color)
+					end
 
-    local drawETA = PathTracker.Menu.PT_ETA.Value
-    local drawCharName = PathTracker.Menu.PT_CharName.Value
-	local drawColor = PathTracker.Menu.PT_ETAColor.Value
-	local textClipper = PathTracker.TextClipper
-
-    for i, entry in ipairs(PathTracker.HandleList) do
-        local value = PathTracker.HeroList[entry]
-		local hero, pathing, endTime = value.Hero.AsHero, value.Pathing, value.ETA
-        if (pathing and pathing.IsMoving and not hero.IsDead) then
-            local vEndPos = pathing.EndPos
-			local waypoints = pathing.Waypoints
-            local curWP = pathing.CurrentWaypoint
-            for i = curWP, #waypoints - 1 do
-                local endPos = waypoints[i + 1]				
-                if (IsOnScreen(endPos)) then
-                    local startPos = (i == curWP and hero.Position) or waypoints[i]			
-                    Renderer.DrawLine3D(startPos, endPos, 1, 0xFFFF00FF)
-                end
+					if (PathTracker.Menu.PT_ETA.Value) then
+						local drawTime = Renderer.WorldToScreen(Vector(vEndPos.x - 10, vEndPos.y - 35, vEndPos.z))
+						Renderer.DrawFilledRect(drawTime, PathTracker.DrawBox, 2, TeamColor(value[1].IsAlly, PathTracker, "PT"))
+						local time = value[3] - OSClock()
+						if (time < 0) then
+							value[2] = 0
+							value[3] = 0
+						else
+							Renderer.DrawText(drawTime, PathTracker.TextClipper, ETAToSeconds(time), color)
+						end
+					end
+				end
 			end
-			
-            if (IsOnScreen(vEndPos)) then				
-                if drawCharName then
-                    local drawName = Renderer.WorldToScreen(Vector(vEndPos.x - 30, vEndPos.y, vEndPos.z))
-					Renderer.DrawText(drawName, textClipper, hero.CharName, drawColor)
-                end
-
-                if drawETA then
-                    local drawTime = Renderer.WorldToScreen(Vector(vEndPos.x - 10, vEndPos.y - 35, vEndPos.z))
-                    Renderer.DrawFilledRect(drawTime, PathTracker.DrawBox, 2, TeamColor(hero.IsAlly, PathTracker, "PT"))
-                    local time = endTime - OSClock()
-                    if (time < 0) then
-                        value.Pathing = nil
-                        value.ETA = 0
-                    else
-                        Renderer.DrawText(drawTime, textClipper, ETAToSeconds(time), drawColor)
-                    end
-                end
-            end
-        end
-    end
+		end
+	end
 end
 
 function PathTracker.OnNewPath(obj, pathing)
-	if not (PathTracker.Menu["PT_Toggle"].Value) then
-        return
-    end
 	local cond = obj and obj.IsHero and obj.IsVisible and not obj.IsMe and (IsTeam(obj.IsAlly, PathTracker, "PT"))
 	if (cond) then
 		local Handle = obj.Handle
 		if (Handle) then
 			local enemy = PathTracker.HeroList[Handle]
 			if (enemy) then
-				PathTracker.HeroList[Handle].Pathing = pathing
+				local minDis = pathing.EndPos:Distance(pathing.StartPos)
+				if( minDis < 100) then
+					return
+				end
+				PathTracker.HeroList[Handle][2] = pathing
 				if (PathTracker.Menu.PT_ETA.Value) then
-					local waypoints = pathing.Waypoints
+					
 					local ETA = 0.0
 					local movespeed = obj.MoveSpeed
-
-					for i = 1, #waypoints - 1 do
-						local startPos, endPos = waypoints[i], waypoints[i + 1]
+					for i = 1, #pathing.Waypoints - 1 do
+						local startPos, endPos = pathing.Waypoints[i], pathing.Waypoints[i + 1]
 						local dis = startPos:Distance(endPos)
 						ETA = ETA + CalculateETA(dis, movespeed)
 					end
 
-					if (ETA >= 1.0) then
-						PathTracker.HeroList[Handle].ETA = OSClock() + ETA
+					if (ETA > 0.0) then
+						PathTracker.HeroList[Handle][3] = OSClock() + ETA
 					end
 				end
 			end
@@ -1595,7 +1681,7 @@ local function GetTheClosetMinion()
 		local distance = Player:Distance(minion)
 		local minionAI = minion.AsAI
 		local isFacing = minionAI:IsFacing(Player, 120)
-		if (minionAI and distance < mindis and isFacing and minionAI.MoveSpeed > 0 and minionAI.Pathing.IsMoving and minionAI.IsVisible) then
+		if (minionAI and distance < mindis and isFacing and minionAI.MoveSpeed > 0) then
 			local direction = minionAI.Direction
 			if (direction) then
 				closetMinion = minion
@@ -1622,7 +1708,7 @@ function BlockMinion.OnUpdate()
 				BlockMinion.targetMinion = tgminion
 				BlockMinion.GetMinion = true
 			end
-			if ( tgminion and tgminion.IsValid ) then
+			if (tgminion) then
 				local minionAI = tgminion.AsAI
 				if (minionAI) then
 					local direction = minionAI.Direction
@@ -1651,7 +1737,7 @@ function BlockMinion.OnDraw()
 			local color = 0x00FF00FF
 			local str = BlockMinion.FindingMsg
 			local tg = BlockMinion.targetMinion
-			if (tg and tg.IsValid) then
+			if (tg) then
 				local tgMinion = tg.AsAI
 				if (tgMinion) then
 					Renderer.DrawCircle3D(tgMinion.Position, 50, 15, 1, color)
@@ -1971,7 +2057,6 @@ function RecallTracker.OnMouseEvent(e)
 	end
 end
 
-
 --[[
 	███    ███  █████  ██ ███    ██ 
 	████  ████ ██   ██ ██ ████   ██ 
@@ -2077,7 +2162,6 @@ function OnLoad()
 			Init()
 		end
 	end
-
 	print("[E2Slayer] E2Utility is Loaded - " .. format("%.1f", Version))
 	return true
 end
