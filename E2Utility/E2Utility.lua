@@ -1386,7 +1386,8 @@ end
 ]]
 
 -- Thanks to Thron. All credits go to him. 
-function TowerRanges.Init()    
+function TowerRanges.Init()
+	TowerRanges.FountainTurrets = {["Turret_OrderTurretShrine_A"] = 1350, ["Turret_ChaosTurretShrine_A"] = 1350}    
     TowerRanges.Menu()
 end
 
@@ -1400,9 +1401,13 @@ function TowerRanges.Menu()
 end
 
 function TowerRanges.DrawRangesForTeam(team_lbl, color)
+	local fountainTurrets = TowerRanges.FountainTurrets
     for k, obj in pairs(ObjManager.Get(team_lbl, "turrets")) do
-        if not obj.IsDead and obj.IsOnScreen then
-            Renderer.DrawCircle3D(obj.Position, 870, 25, 1, color)
+		if not obj.IsDead and obj.IsOnScreen and not obj.IsInhibitor then
+			local isFountainTurret = fountainTurrets[obj.Name]
+			if not isFountainTurret then
+				Renderer.DrawCircle3D(obj.Position, 870, 25, 1, color)
+			end
         end
     end
 end
