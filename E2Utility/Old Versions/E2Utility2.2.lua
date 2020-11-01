@@ -2,19 +2,7 @@ require("common.log")
 module("E2Utility", package.seeall, log.setup)
 
 local _Core = _G.CoreEx
-local ObjManager,
-	EventManager,
-	Input,
-	Enums,
-	Game,
-	Geometry,
-	Renderer,
-	Vector,
-	Collision,
-	Orbwalker,
-	Prediction,
-	Nav,
-	HitChance =
+local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector, Collision, Orbwalker, Prediction, Nav, HitChance =
 	_Core.ObjectManager,
 	_Core.EventManager,
 	_Core.Input,
@@ -39,7 +27,7 @@ local format = string.format
 -- Copied from Mista's scripts :)
 
 -- Verision
-local Version = 2.3
+local Version = 2.2
 
 local Profiler = _G.Libs.Profiler
 
@@ -764,11 +752,8 @@ function CooldownTracker.Init()
 	CooldownTracker.TextColor = 0x00FF00FF
 	CooldownTracker.TextColorBlack = 0x0d0d0dFF
 
-	-- CooldownTracker.SpellBackground = Vector(104, 5, 0)
-	-- CooldownTracker.SpellBoxVector = Vector(25, 5, 0)
-	-- CooldownTracker.SSBoxVector = Vector(30, 12, 0)
-	CooldownTracker.SpellBackground = Vector(111, 7, 0)
-	CooldownTracker.SpellBoxVector = Vector(24, 3, 0)
+	CooldownTracker.SpellBackground = Vector(104, 5, 0)
+	CooldownTracker.SpellBoxVector = Vector(25, 5, 0)
 	CooldownTracker.SSBoxVector = Vector(30, 12, 0)
 	CooldownTracker.SummonerSpellsStructure = {
 		["SummonerBarrier"] = {Name = "Barrier", Color = 0xffb833ff, CDColor = 0xbd7b00ff},
@@ -788,14 +773,10 @@ function CooldownTracker.Init()
 		["Empty"] = {Name = "Empty", Color = 0x999999ff, CDColor = 0x5e5e5eff}
 	}
 
-	-- 1 is to lower side adjustment
-	-- 2 is to right side adjustment
 	local AdjustmentRequired = {
 		["Annie"] = {1, Vector(0, 10, 0)},
 		["Jhin"] = {1, Vector(0, 10, 0)},
 		["Pantheon"] = {1, Vector(0, 10, 0)},
-		["Irelia"] = {1, Vector(0, 10, 0)},
-		["Ryze"] = {1, Vector(0, 10, 0)},
 		["Zoe"] = {2, Vector(25, 0, 0)},
 		["Aphelios"] = {2, Vector(52, 0, 0)},
 		["Sylas"] = {2, Vector(28, 0, 0)}
@@ -854,10 +835,55 @@ function CooldownTracker.Init()
 				[5] = {Spell = nil, RemainingCooldown = 0.0, Name = "Empty"}
 			}
 
-			for i = SpellSlots.Q, SpellSlots.Summoner2 do
+			for i = SpellSlots.Q, SpellSlots.R do
 				local t_spell = objHero:GetSpell(i)
+
 				if (t_spell) then
 					copySpell[i].Spell = t_spell
+					if (t_spell.IsLearned) then
+						copySpell[i].IsLearned = true
+						local cd = t_spell.RemainingCooldown
+						local tcd = t_spell.TotalCooldown
+
+						copySpell[i].RemainingCooldown = cd
+						-- Got from 48656c6c636174
+						local pct = (25 * (1 / tcd)) * cd
+						if (pct) then
+							copySpell[i].PctCooldown = pct
+						end
+						if (cd > 0.0) then
+							copySpell[i].Color = CooldownTracker.EnumColor.NotLearned
+
+							if (cd <= 10.0) then
+								copySpell[i].Color2 = CooldownTracker.EnumColor.AlmostReady
+							else
+								copySpell[i].Color2 = CooldownTracker.EnumColor.OnCooldown
+							end
+						else
+							copySpell[i].Color = CooldownTracker.EnumColor.Ready
+							local mana = objHero.Mana - t_spell.ManaCost
+							if (mana < 0) then
+								copySpell[i].IsEnoughMana = false
+								copySpell[i].Color = CooldownTracker.EnumColor.NoMana
+							else
+								copySpell[i].IsEnoughMana = true
+							end
+						end
+					else
+						copySpell[i].IsLearned = false
+						copySpell[i].Color = CooldownTracker.EnumColor.NotLearned
+					end
+				end
+			end
+
+			for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
+				local t_spell = objHero:GetSpell(i)
+
+				if (t_spell) then
+					copySpell[i].Spell = t_spell
+					local cd = t_spell.RemainingCooldown
+					copySpell[i].RemainingCooldown = cd
+
 					local ssName = t_spell.Name
 					local ss = CooldownTracker.SummonerSpellsStructure[ssName]
 					if (ss) then
@@ -886,179 +912,158 @@ function CooldownTracker.Menu()
 end
 
 local function CDCondition(objHero)
-	if (objHero.IsValid and objHero.IsVisible and not objHero.IsDead and objHero.IsOnScreen) then
-		local menu = CooldownTracker.Menu.CDTracker_Settings
-		return (objHero.IsMe and menu.CDTracker_TrackMe.Value) or
-			(objHero.IsAlly and not objHero.IsMe and menu.CDTracker_TrackAlly.Value) or
-			(objHero.IsEnemy and menu.CDTracker_TrackEnemy.Value)
-	end
-	return false
+	local menu = CooldownTracker.Menu.CDTracker_Settings
+	return (objHero.IsMe and menu.CDTracker_TrackMe.Value) or
+		(objHero.IsAlly and not objHero.IsMe and menu.CDTracker_TrackAlly.Value) or
+		(objHero.IsEnemy and menu.CDTracker_TrackEnemy.Value)
 end
-
-local function CDPercentToBox(cd, tcd)
-	local result = floor(24 * cd / tcd)
-	-- Because if the drawline is only 1 width, the line is kinda glitchy
-	if (result >= 23) then
-		return 22
-	end
-	return result
-end
-
--- local function CDBarColor(cd)
--- 	if (cd <= 10) then
--- 		return CooldownTracker.ColorList[CooldownTracker.EnumColor.AlmostReady]
--- 	end
--- 	return CooldownTracker.ColorList[CooldownTracker.EnumColor.OnCooldown]
--- end
-
--- local function IsLearned(isLearned, IsEnoughMana)
--- 	local enum = CooldownTracker.EnumColor
--- 	if (isLearned) then
--- 		if ( IsEnoughMana ) then
--- 			return CooldownTracker.ColorList[enum.NoMana]
--- 		end
--- 		return CooldownTracker.ColorList[enum.Ready]
--- 	end
--- 	return CooldownTracker.ColorList[enum.NotLearned]
--- end
 
 function CooldownTracker.OnTick()
 	local menu = CooldownTracker.Menu
 	if (menu.CDTracker_Toggle.Value) then
 		local Heroes = CooldownTracker.Heroes
 		local maxHeroes = CooldownTracker.count
-		local enum = CooldownTracker.EnumColor
+		local IsOnScreen = Renderer.IsOnScreen
 		for h = 1, maxHeroes do
 			local objHero = Heroes[h][2].AsHero
-			if (CDCondition(objHero)) then
-				for i = SpellSlots.Q, SpellSlots.R do
-					local copySpell = Heroes[h][1]
-					if (copySpell[i].Spell.IsLearned) then
-						copySpell[i].IsLearned = true
-						local cd = copySpell[i].Spell.RemainingCooldown
-						local tcd = copySpell[i].Spell.TotalCooldown
-						copySpell[i].RemainingCooldown = cd
-						copySpell[i].PctCooldown = CDPercentToBox(cd, tcd)
+			if (objHero.IsVisible and not objHero.IsDead and IsOnScreen(objHero.Position)) then
+				if (CDCondition(objHero)) then
+					for i = SpellSlots.Q, SpellSlots.R do
+						local copySpell = Heroes[h][1]
 
-						if (cd > 0.0) then
-							copySpell[i].Color = enum.NotLearned
-							if (cd <= 10.0) then
-								copySpell[i].Color2 = enum.AlmostReady
+						if (copySpell[i].Spell.IsLearned) then
+							copySpell[i].IsLearned = true
+							local cd = copySpell[i].Spell.RemainingCooldown
+							local tcd = copySpell[i].Spell.TotalCooldown
+							copySpell[i].RemainingCooldown = cd
+							-- Got from 48656c6c636174
+							local pct = floor((25 * cd / tcd))
+
+							if (pct) then
+								copySpell[i].PctCooldown = pct
+							end
+
+							if (cd > 0.0) then
+								copySpell[i].Color = CooldownTracker.EnumColor.NotLearned
+								if (cd <= 10.0) then
+									copySpell[i].Color2 = CooldownTracker.EnumColor.AlmostReady
+								else
+									copySpell[i].Color2 = CooldownTracker.EnumColor.OnCooldown
+								end
 							else
-								copySpell[i].Color2 = enum.OnCooldown
+								copySpell[i].Color = CooldownTracker.EnumColor.Ready
+								local mana = objHero.Mana - copySpell[i].Spell.ManaCost
+								if (mana < 0) then
+									copySpell[i].IsEnoughMana = false
+									copySpell[i].Color = CooldownTracker.EnumColor.NoMana
+								else
+									copySpell[i].IsEnoughMana = true
+								end
 							end
 						else
-							copySpell[i].Color = enum.Ready
-							local mana = objHero.Mana - copySpell[i].Spell.ManaCost
-							if (mana < 0) then
-								copySpell[i].IsEnoughMana = false
-								copySpell[i].Color = enum.NoMana
-							else
-								copySpell[i].IsEnoughMana = true
+							copySpell[i].IsLearned = false
+							copySpell[i].Color = CooldownTracker.EnumColor.NotLearned
+						end
+						Heroes[h][1] = copySpell
+					end
+
+					for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
+						local copySpell = Heroes[h][1]
+						local objHero = Heroes[h][2]
+						local t_spell = objHero:GetSpell(i)
+						if (t_spell) then
+							--copySpell[i].Spell = t_spell
+							local cd = t_spell.RemainingCooldown
+							copySpell[i].RemainingCooldown = cd
+							local ssName = t_spell.Name
+							local ss = CooldownTracker.SummonerSpellsStructure[ssName]
+							if (ss) then
+								copySpell[i].Name = ssName
 							end
 						end
-					else
-						copySpell[i].IsLearned = false
-						copySpell[i].Color = enum.NotLearned
+						Heroes[h][1] = copySpell
 					end
-					Heroes[h][1] = copySpell
-				end
-
-				for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
-					local copySpell = Heroes[h][1]
-					local objHero = Heroes[h][2]
-					local t_spell = objHero:GetSpell(i)
-					if (t_spell) then
-						copySpell[i].Spell = t_spell
-						local cd = t_spell.RemainingCooldown
-						copySpell[i].RemainingCooldown = cd
-						local ssName = t_spell.Name
-						local ss = CooldownTracker.SummonerSpellsStructure[ssName]
-						if (ss) then
-							copySpell[i].Name = ssName
-						end
-					end
-					Heroes[h][1] = copySpell
 				end
 			end
 		end
 	end
 end
 
-function CooldownTracker.ShouldHPPosAdjusted(adjustment, hpPos, isVerticalAdjustment)
-	if (CooldownTracker.Menu.CDTracker_Settings.CDTracker_Adjustment.Value) then
-		local adjustType = adjustment[1]
-		if ((adjustType == 1 and isVerticalAdjustment) or (adjustType == 2 and not isVerticalAdjustment)) then
-			return hpPos + adjustment[2]
-		end
-	end
-	return hpPos
-end
-
 function CooldownTracker.OnDraw()
 	local menu = CooldownTracker.Menu
 	if (menu.CDTracker_Toggle.Value) then
+		local IsOnScreen2D = Renderer.IsOnScreen2D
 		local Heroes = CooldownTracker.Heroes
-		local boxOutLine = CooldownTracker.BoxOutline
-		local SpellBackground = CooldownTracker.SpellBackground
-		local spellBox = CooldownTracker.SpellBoxVector
-		local ssBox = CooldownTracker.SSBoxVector
-		local colorList = CooldownTracker.ColorList
+		local maxHeroes = CooldownTracker.count
 
-		for h = 1, CooldownTracker.count do
+		for h = 1, maxHeroes do
 			local objHero = Heroes[h][2].AsHero
-			local cond = CDCondition(objHero)
-			if (cond) then
-				local adjustment = Heroes[h][3]
-				local originalHpPos = objHero.HealthBarScreenPos
-				local hpPos = CooldownTracker.ShouldHPPosAdjusted(adjustment, originalHpPos, true)
-				-- Grey box for Q to R spells
-				Renderer.DrawFilledRect(Vector(hpPos.x - 48, hpPos.y - 3, 0), SpellBackground, 2, CooldownTracker.BoxOutline)
-				for i = SpellSlots.Q, SpellSlots.R do
-					local copySpell = Heroes[h][1]
+			local adjustment = Heroes[h][3]
+			local hpPos = objHero.HealthBarScreenPos
 
-					local pos = Vector(hpPos.x + 27 * i - 45, hpPos.y - 1, 0)
-
-					local remainCD = copySpell[i].RemainingCooldown
-					if (remainCD > 0) then
-						Renderer.DrawFilledRect(pos, spellBox, 1, colorList[CooldownTracker.EnumColor.NotLearned])
-						-- Got from 48656c6c636174
-						local pctPos = Vector(spellBox.x - copySpell[i].PctCooldown, spellBox.y, 0)
-						Renderer.DrawFilledRect(pos, pctPos, 1, colorList[copySpell[i].Color2])
-						Renderer.DrawText(
-							Vector(pos.x + 4, pos.y + 7, 0),
-							TextClipper,
-							format(CooldownTracker.StringFormat, remainCD),
-							CooldownTracker.TextColor
-						)
-					else
-						Renderer.DrawFilledRect(pos, spellBox, 1, colorList[copySpell[i].Color])
+			if (objHero and objHero.IsValid and objHero.IsVisible and not objHero.IsDead and IsOnScreen2D(hpPos)) then
+				local cond = CDCondition(objHero)
+				if (cond) then
+					if (adjustment[1] == 1 and menu.CDTracker_Settings.CDTracker_Adjustment.Value) then
+						hpPos = hpPos + adjustment[2]
 					end
-				end
+					Renderer.DrawFilledRect(
+						Vector(hpPos.x - 45, hpPos.y - 2, 0),
+						CooldownTracker.SpellBackground,
+						2,
+						CooldownTracker.ColorList[CooldownTracker.EnumColor.NotLearned]
+					)
+					local SpellBoxVector = CooldownTracker.SpellBoxVector
+					for i = SpellSlots.Q, SpellSlots.R do
+						local copySpell = Heroes[h][1]
 
-				hpPos = CooldownTracker.ShouldHPPosAdjusted(adjustment, originalHpPos, false) + Vector(65, -40, 0)
-				for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
-					local copySpell = Heroes[h][1]
-					hpPos.y = hpPos.y + 13
-					if (copySpell) then
-						local posText = Vector(hpPos.x + 5, hpPos.y, 0)
-						local spellName = copySpell[i].Name
-						local ssStruct = CooldownTracker.SummonerSpellsStructure[spellName]
-						local spellColor = ssStruct.Color
-						if (copySpell[i].RemainingCooldown > 0) then
-							spellColor = ssStruct.CDColor
-							Renderer.DrawFilledRect(hpPos, ssBox, 2, spellColor)
-							Renderer.DrawText(
-								posText,
-								TextClipper,
-								format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown),
-								CooldownTracker.TextColorBlack
-							)
-						else
-							Renderer.DrawFilledRect(hpPos, ssBox, 2, spellColor)
+						local color = CooldownTracker.ColorList[copySpell[i].Color]
+						local color2 = CooldownTracker.ColorList[copySpell[i].Color2]
+						local pos = hpPos + Vector(26 * i - 45, -2, 0)
+						if (color and color2) then
+							if (copySpell[i].RemainingCooldown > 0) then
+								local pctPos = Vector(26 - copySpell[i].PctCooldown, 5, 0)
+								Renderer.DrawFilledRect(pos, pctPos, 1, color2)
+								Renderer.DrawRectOutline(pos, SpellBoxVector, 2, 2, CooldownTracker.BoxOutline)
+								pos = Vector(pos.x + 4, pos.y + 7, 0)
+								Renderer.DrawText(
+									pos,
+									TextClipper,
+									format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown),
+									CooldownTracker.TextColor
+								)
+							else
+								Renderer.DrawFilledRect(pos, SpellBoxVector, 2, color)
+								Renderer.DrawRectOutline(pos, SpellBoxVector, 2, 2, CooldownTracker.BoxOutline)
+							end
 						end
 					end
-					Renderer.DrawRectOutline(hpPos, ssBox, 2, 2, boxOutLine)
+
+					local ssBox = CooldownTracker.SSBoxVector
+					hpPos = objHero.HealthBarScreenPos
+					if (adjustment[1] == 2 and menu.CDTracker_Settings.CDTracker_Adjustment.Value) then
+						hpPos = hpPos + adjustment[2]
+					end
+
+					for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
+						local copySpell = Heroes[h][1]
+						local pos = Vector(hpPos.x + 65, 13 * (i - 1) + hpPos.y - 65, 0)
+						if (copySpell) then
+							local posText = Vector(hpPos.x + 70, 13 * (i - 1) + hpPos.y - 65, 0)
+							if (copySpell[i].RemainingCooldown > 0) then
+								Renderer.DrawFilledRect(pos, ssBox, 2, CooldownTracker.SummonerSpellsStructure[copySpell[i].Name].CDColor)
+								Renderer.DrawText(
+									posText,
+									TextClipper,
+									format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown),
+									CooldownTracker.TextColorBlack
+								)
+							else
+								Renderer.DrawFilledRect(pos, ssBox, 2, CooldownTracker.SummonerSpellsStructure[copySpell[i].Name].Color)
+							end
+						end
+						Renderer.DrawRectOutline(pos, ssBox, 2, 2, CooldownTracker.BoxOutline)
+					end
 				end
 			end
 		end
@@ -1149,14 +1154,14 @@ function Activator.Init()
 			Type = Activator.EnumOffensiveType.NonTargeted,
 			Range = 1000,
 			PredictionInput = {
-				Range = 1000,
-				Width = 30,
-				Radius = 15,
-				Speed = 2000,
-				Delay = 0.25,
-				Collisions = {Minions = true, WindWall = true},
-				Type = "Linear",
-				UseHitbox = true
+				Range=1000,
+				Width=30,
+				Radius=15,
+				Speed=2000, 
+				Delay=0.25,
+				Collisions={ Minions=true, WindWall=true },
+				Type="Linear",
+				UseHitbox=true
 			},
 			EnemyHealth = 80,
 			MyHealth = 35,
@@ -1168,14 +1173,14 @@ function Activator.Init()
 			Type = Activator.EnumOffensiveType.NonTargeted,
 			Range = 400,
 			PredictionInput = {
-				Range = 400,
-				Width = 30,
-				Radius = 15,
-				Speed = 1150,
-				Delay = 0,
-				Collisions = {WindWall = true},
-				Type = "Linear",
-				UseHitbox = true
+				Range=400,
+				Width=30,
+				Radius=15,
+				Speed=1150, 
+				Delay=0,
+				Collisions={WindWall=true },
+				Type="Linear",
+				UseHitbox=true
 			},
 			EnemyHealth = 80,
 			MyHealth = 35,
@@ -1233,10 +1238,7 @@ function Activator.OnTick()
 					target = TS:GetTarget(item.Range)
 					local focusedCond = FocusedCondition(item.Range)
 					if (target and focusedCond) then
-						if
-							(Player.HealthPercent <= item.Menu.MyHealth.Value * 0.01 or
-								target.HealthPercent <= item.Menu.EnemyHealth.Value * 0.01)
-						 then
+						if (Player.HealthPercent <= item.Menu.MyHealth.Value*0.01 or target.HealthPercent <= item.Menu.EnemyHealth.Value*0.01) then
 							if (item.Type == Activator.EnumOffensiveType.Targeted) then
 								Input.Cast(itemslot, target)
 							elseif (item.Type == Activator.EnumOffensiveType.Active) then
@@ -1352,10 +1354,10 @@ end
 function TurnAround.OnProcessSpell(obj, spellcast)
 	if (TurnAround.Menu["TA_Toggle"].Value) then
 		local objHero = obj.AsHero
-		local cond = TurnAround.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy
+		local cond = TurnAround.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy 
 		if (cond) then
 			local spelldata = TurnAround.SpellData[objHero.CharName]
-			if (spelldata) then
+			if (spelldata ) then
 				local spell = spelldata[spellcast.Name]
 				if (objHero and spell) then
 					local condSpell = Player:Distance(objHero.Position) + Player.BoundingRadius <= spell.Range
@@ -1382,43 +1384,44 @@ end
 	   ██    ██    ██ ██ ███ ██ ██      ██   ██     ██   ██ ██   ██ ██  ██ ██ ██    ██ ██           ██ 
 	   ██     ██████   ███ ███  ███████ ██   ██     ██   ██ ██   ██ ██   ████  ██████  ███████ ███████                                                                                                                                                                                                                                                                                                                                                                                                                    
 ]]
--- Thanks to Thron. All credits go to him.
+
+-- Thanks to Thron. All credits go to him. 
 function TowerRanges.Init()
-	TowerRanges.FountainTurrets = {["Turret_OrderTurretShrine_A"] = 1350, ["Turret_ChaosTurretShrine_A"] = 1350}
-	TowerRanges.Menu()
+	TowerRanges.FountainTurrets = {["Turret_OrderTurretShrine_A"] = 1350, ["Turret_ChaosTurretShrine_A"] = 1350}    
+    TowerRanges.Menu()
 end
 
 function TowerRanges.Menu()
-	TowerRanges.Menu = Menu:AddMenu("TR_Menu", "TowerRanges")
-	TowerRanges.Menu:AddBool("TR_Enemy", "Track Enemy Towers", true)
-	TowerRanges.Menu:AddRGBAMenu("TR_EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
-	TowerRanges.Menu:AddBool("TR_Ally", "Track Ally Towers", true)
-	TowerRanges.Menu:AddRGBAMenu("TR_AllyColor", "Ally Tower Range Color", 0x00FF00FF)
-	TowerRanges.Menu:AddBool("TR_Toggle", "Activate Tower Ranges", true)
+    TowerRanges.Menu = Menu:AddMenu("TR_Menu", "TowerRanges")
+    TowerRanges.Menu:AddBool("TR_Enemy", "Track Enemy Towers", true)
+    TowerRanges.Menu:AddRGBAMenu("TR_EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
+    TowerRanges.Menu:AddBool("TR_Ally", "Track Ally Towers", true)
+    TowerRanges.Menu:AddRGBAMenu("TR_AllyColor", "Ally Tower Range Color", 0x00FF00FF)
+    TowerRanges.Menu:AddBool("TR_Toggle", "Activate Tower Ranges", true)
 end
 
 function TowerRanges.DrawRangesForTeam(team_lbl, color)
 	local fountainTurrets = TowerRanges.FountainTurrets
-	for k, obj in pairs(ObjManager.Get(team_lbl, "turrets")) do
+    for k, obj in pairs(ObjManager.Get(team_lbl, "turrets")) do
 		if not obj.IsDead and obj.IsOnScreen and not obj.IsInhibitor then
 			local isFountainTurret = fountainTurrets[obj.Name]
 			if not isFountainTurret then
 				Renderer.DrawCircle3D(obj.Position, 870, 25, 1, color)
 			end
-		end
-	end
+        end
+    end
 end
 
 function TowerRanges.OnDraw()
-	if TowerRanges.Menu.TR_Toggle.Value then
-		if TowerRanges.Menu.TR_Ally.Value then
-			TowerRanges.DrawRangesForTeam("ally", TowerRanges.Menu.TR_AllyColor.Value)
-		end
+    if TowerRanges.Menu.TR_Toggle.Value then    
+        if TowerRanges.Menu.TR_Ally.Value then
+            TowerRanges.DrawRangesForTeam("ally", TowerRanges.Menu.TR_AllyColor.Value)
+        end    
 
-		if TowerRanges.Menu.TR_Enemy.Value then
-			TowerRanges.DrawRangesForTeam("enemy", TowerRanges.Menu.TR_EnemyColor.Value)
-		end
-	end
+        if TowerRanges.Menu.TR_Enemy.Value then
+            TowerRanges.DrawRangesForTeam("enemy", TowerRanges.Menu.TR_EnemyColor.Value)
+        end
+    end
 end
 
 --[[
@@ -1468,60 +1471,61 @@ local function ETAToSeconds(Seconds)
 	return format("%02.f", floor(Seconds))
 end
 
+
 -- Thanks to Thron
 function PathTracker.OnDraw()
-	if not (PathTracker.Menu["PT_Toggle"].Value) then
-		return
-	end
+    if not (PathTracker.Menu["PT_Toggle"].Value) then
+        return
+    end
 
-	local IsOnScreen = Renderer.IsOnScreen
+    local IsOnScreen = Renderer.IsOnScreen
 
-	local drawETA = PathTracker.Menu.PT_ETA.Value
-	local drawCharName = PathTracker.Menu.PT_CharName.Value
+    local drawETA = PathTracker.Menu.PT_ETA.Value
+    local drawCharName = PathTracker.Menu.PT_CharName.Value
 	local drawColor = PathTracker.Menu.PT_ETAColor.Value
 	local textClipper = PathTracker.TextClipper
 
-	for i, entry in ipairs(PathTracker.HandleList) do
-		local value = PathTracker.HeroList[entry]
+    for i, entry in ipairs(PathTracker.HandleList) do
+        local value = PathTracker.HeroList[entry]
 		local hero, pathing, endTime = value.Hero.AsHero, value.Pathing, value.ETA
-		if (pathing and pathing.IsMoving and not hero.IsDead) then
-			local vEndPos = pathing.EndPos
+        if (pathing and pathing.IsMoving and not hero.IsDead) then
+            local vEndPos = pathing.EndPos
 			local waypoints = pathing.Waypoints
-			local curWP = pathing.CurrentWaypoint
-			for i = curWP, #waypoints - 1 do
-				local endPos = waypoints[i + 1]
-				if (IsOnScreen(endPos)) then
-					local startPos = (i == curWP and hero.Position) or waypoints[i]
-					Renderer.DrawLine3D(startPos, endPos, 1, 0xFFFF00FF)
-				end
+            local curWP = pathing.CurrentWaypoint
+            for i = curWP, #waypoints - 1 do
+                local endPos = waypoints[i + 1]				
+                if (IsOnScreen(endPos)) then
+                    local startPos = (i == curWP and hero.Position) or waypoints[i]			
+                    Renderer.DrawLine3D(startPos, endPos, 1, 0xFFFF00FF)
+                end
 			end
-
-			if (IsOnScreen(vEndPos)) then
-				if drawCharName then
-					local drawName = Renderer.WorldToScreen(Vector(vEndPos.x - 30, vEndPos.y, vEndPos.z))
+			
+            if (IsOnScreen(vEndPos)) then				
+                if drawCharName then
+                    local drawName = Renderer.WorldToScreen(Vector(vEndPos.x - 30, vEndPos.y, vEndPos.z))
 					Renderer.DrawText(drawName, textClipper, hero.CharName, drawColor)
-				end
+                end
 
-				if drawETA then
-					local drawTime = Renderer.WorldToScreen(Vector(vEndPos.x - 10, vEndPos.y - 35, vEndPos.z))
-					Renderer.DrawFilledRect(drawTime, PathTracker.DrawBox, 2, TeamColor(hero.IsAlly, PathTracker, "PT"))
-					local time = endTime - OSClock()
-					if (time < 0) then
-						value.Pathing = nil
-						value.ETA = 0
-					else
-						Renderer.DrawText(drawTime, textClipper, ETAToSeconds(time), drawColor)
-					end
-				end
-			end
-		end
-	end
+                if drawETA then
+                    local drawTime = Renderer.WorldToScreen(Vector(vEndPos.x - 10, vEndPos.y - 35, vEndPos.z))
+                    Renderer.DrawFilledRect(drawTime, PathTracker.DrawBox, 2, TeamColor(hero.IsAlly, PathTracker, "PT"))
+                    local time = endTime - OSClock()
+                    if (time < 0) then
+                        value.Pathing = nil
+                        value.ETA = 0
+                    else
+                        Renderer.DrawText(drawTime, textClipper, ETAToSeconds(time), drawColor)
+                    end
+                end
+            end
+        end
+    end
 end
 
 function PathTracker.OnNewPath(obj, pathing)
 	if not (PathTracker.Menu["PT_Toggle"].Value) then
-		return
-	end
+        return
+    end
 	local cond = obj and obj.IsHero and obj.IsVisible and not obj.IsMe and (IsTeam(obj.IsAlly, PathTracker, "PT"))
 	if (cond) then
 		local Handle = obj.Handle
@@ -1596,10 +1600,7 @@ local function GetTheClosetMinion()
 		local distance = Player:Distance(minion)
 		local minionAI = minion.AsAI
 		local isFacing = minionAI:IsFacing(Player, 120)
-		if
-			(minionAI and distance < mindis and isFacing and minionAI.MoveSpeed > 0 and minionAI.Pathing.IsMoving and
-				minionAI.IsVisible)
-		 then
+		if (minionAI and distance < mindis and isFacing and minionAI.MoveSpeed > 0 and minionAI.Pathing.IsMoving and minionAI.IsVisible) then
 			local direction = minionAI.Direction
 			if (direction) then
 				closetMinion = minion
@@ -1626,7 +1627,7 @@ function BlockMinion.OnUpdate()
 				BlockMinion.targetMinion = tgminion
 				BlockMinion.GetMinion = true
 			end
-			if (tgminion and tgminion.IsValid) then
+			if ( tgminion and tgminion.IsValid ) then
 				local minionAI = tgminion.AsAI
 				if (minionAI) then
 					local direction = minionAI.Direction
@@ -1854,7 +1855,7 @@ local function DecodeRecallStatus(status, name)
 end
 
 function RecallTracker.OnDraw()
-	if (RecallTracker.Menu.RT_Toggle.Value) then
+	if(RecallTracker.Menu.RT_Toggle.Value) then
 		if (RecallTracker.IsDragging) then
 			local mousePos = Renderer.GetCursorPos()
 			local x_diff = mousePos.x - RecallTracker.DefaultLocation.x
@@ -1863,15 +1864,14 @@ function RecallTracker.OnDraw()
 			RecallTracker.Menu.RT_AdjustY.Value = y_diff
 		end
 
-		local drawLocation
+		local drawLocation 
 		-- test drawing
 		if (RecallTracker.Menu.RT_Key.Value) then
 			drawLocation =
-				Vector(
-				RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
-				RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
-				0
-			)
+			Vector(
+			RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
+			RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
+			0)
 			local boxSize = RecallTracker.BoxSize
 			local testText = RecallTracker.TestText
 			for i = 1, 5 do
@@ -1883,11 +1883,10 @@ function RecallTracker.OnDraw()
 			end
 		else
 			drawLocation =
-				Vector(
-				RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
-				RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
-				0
-			)
+			Vector(
+			RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
+			RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
+			0)
 			local boxSize = RecallTracker.BoxSize
 			local count = #RecallTracker.ActiveHeroes
 			for i = 1, count do
@@ -1936,12 +1935,12 @@ local function GetExtraDuration(duration, status)
 end
 
 function RecallTracker.OnTeleport(obj, name, duration_secs, status)
-	if (RecallTracker.Menu.RT_Toggle.Value and obj.IsEnemy) then
+	if(RecallTracker.Menu.RT_Toggle.Value and obj.IsEnemy) then
 		local i_status = GetRecallStatus(status)
 		local duration = GetExtraDuration(duration_secs, i_status)
 		local ETA = OSClock() + duration
 		local recallHero = RecallTracker.RecallingList[obj.Handle]
-		if (recallHero) then
+		if( recallHero) then
 			recallHero.RecallName = name
 			recallHero.Duration = duration_secs
 			recallHero.ETA = ETA
@@ -1952,7 +1951,7 @@ function RecallTracker.OnTeleport(obj, name, duration_secs, status)
 end
 
 function RecallTracker.OnMouseEvent(e)
-	if (RecallTracker.Menu.RT_Toggle.Value and RecallTracker.Menu.IsOpen) then
+	if(RecallTracker.Menu.RT_Toggle.Value and RecallTracker.Menu.IsOpen) then
 		if (RecallTracker.Menu.RT_AdjustToggle.Value) then
 			local event = RecallTracker.MouseEvent[e]
 			-- 513 is Left Mouse Down
@@ -1976,6 +1975,7 @@ function RecallTracker.OnMouseEvent(e)
 		end
 	end
 end
+
 
 --[[
 	███    ███  █████  ██ ███    ██ 
