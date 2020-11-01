@@ -38,7 +38,7 @@ local floor = math.floor
 local format = string.format
 
 local TickCount = 0
-local Version = 1.0
+local Version = 1.2
 local E2Lucian = {}
 local TS = {}
 
@@ -122,6 +122,7 @@ function E2Lucian.Menu()
     E2Lucian.Menu.Combo:AddDropDown("EMode", "E Mode", E2Lucian.ETypes)
     E2Lucian.Menu.Combo:AddBool("UseR", "Use R", false)
     E2Lucian.Menu.Combo:AddLabel("UseRLabel", "^-> Only Killable")
+    E2Lucian.Menu.Combo:AddBool("UseRMagnet", "^-> Use Magent R", false)
 
     E2Lucian.Menu:AddMenu("Harass", "Harass")
     E2Lucian.Menu.Harass:AddBool("UseQ", "Use Q", true)
@@ -283,28 +284,26 @@ end
 --@param Manacheck boolean - it checks the logic requires minimum mana
 --@param mode string - orbwalker mode
 function E2Lucian.WLogic(ManaCheck, mode)
-    if (ManaCheck or E2Lucian.CanCast(mode, _W.String, false)) then
+    if (ManaCheck or E2Lucian.CanCast(mode, _W.String, false) or not E2Lucian.Menu[mode].UseW.Value) then
         return
     end
 
-    local isWEnabled = E2Lucian.Menu[mode].UseW.Value
-    if (isWEnabled) then
-        local target = TS:GetTarget(_W.Range)
-        if (target) then
-            if (E2Lucian.Menu[mode].UseWCol.Value) then
-                local distance = target.Position:Distance(Player)
-                if (distance < 300) then
-                    Input.Cast(_W.Slot, target.Position)
-                    return
-                end
-            end
-            local pred = Prediction.GetPredictedPosition(target, _W, Player.Position)
-            if (pred and pred.HitChanceEnum >= HitChance.Low) then
-                --print(" cast w")
-                Input.Cast(_W.Slot, pred.CastPosition)
+    local target = TS:GetTarget(_W.Range)
+    if (target and target.IsValid and not target.IsDead) then
+        if (E2Lucian.Menu[mode].UseWCol.Value) then
+            local distance = target.Position:Distance(Player)
+            if (distance < 300) then
+                Input.Cast(_W.Slot, target.Position)
+                return
             end
         end
+        local pred = Prediction.GetPredictedPosition(target, _W, Player.Position)
+        if (pred and pred.HitChanceEnum >= HitChance.Low) then
+            --print(" cast w")
+            Input.Cast(_W.Slot, pred.CastPosition)
+        end
     end
+    
 end
 
 --@param Manacheck boolean - it checks the logic requires minimum mana
@@ -317,9 +316,9 @@ function E2Lucian.ELogic(ManaCheck, mode)
     local isEEnabled = E2Lucian.Menu[mode].UseE.Value
     if (isEEnabled) then
         local eMode = E2Lucian.GetEMode()
-        local target = TS:GetTarget(750)
+        local target = TS:GetTarget(_Q.Range + _E.MinRange)
         local mousePos = Renderer.GetMousePos()
-        if (target) then
+        if (target and target.IsValid and not target.IsDead) then
             if ( eMode == -1 ) then
                 local distance = Player.Position:Distance(target.Position)
                 if( distance >= _E.Range) then
@@ -336,14 +335,13 @@ end
 --@param Manacheck boolean - it checks the logic requires minimum mana
 --@param mode string - orbwalker mode
 function E2Lucian.RLogic(ManaCheck, mode)
-    if (E2Lucian.CanCast(mode, _R.String, true)) then
+    if (ManaCheck or E2Lucian.CanCast(mode, _R.String, true)) then
         return
     end
-
     local isEEnabled = E2Lucian.Menu[mode].UseR.Value
     if (isEEnabled) then
         local target = TS:GetTarget(_R.Range)
-        if (target and (E2Lucian.GetRDamage(target) > target.Health + target.ShieldAll or mode == "Misc")) then
+        if (target and ( (E2Lucian.GetRDamage(target) > target.Health + target.ShieldAll) or E2Lucian.Menu.Misc.MagnetR.Value)) then
             local pred = Prediction.GetPredictedPosition(target, _R, Player.Position)
             if (pred and pred.HitChanceEnum >= HitChance.Medium) then
                 local extended = pred.CastPosition:Extended(Player.Position, _R.FollowRange)
@@ -352,23 +350,6 @@ function E2Lucian.RLogic(ManaCheck, mode)
                 Input.Cast(_R.Slot, pred.CastPosition)
             end
         end
-    end
-end
-
-function E2Lucian.MagnetR()
-    if (E2Lucian.IsCastingR()) then
-        local target = E2Lucian.RTarget
-        if (target) then
-            Orbwalker.BlockMove(true)
-            local pred = Prediction.GetPredictedPosition(target, _R, Player.Position)
-            if (pred) then
-                Input.MoveTo(pred.CastPosition - E2Lucian.RVector)
-            end
-        end
-    else
-        E2Lucian.RLogic(false, "Misc")
-        Orbwalker.BlockMove(false)
-        Input.MoveTo(Renderer.GetMousePos())
     end
 end
 
@@ -388,34 +369,43 @@ end
 
 function E2Lucian.Waveclear()
     local mode = "Waveclear"
+    local useQ = E2Lucian.Menu[mode].UseQ.Value
+    local useW = E2Lucian.Menu[mode].UseW.Value
+
+    if ( not useQ and useW ) then
+        return
+    end
     local pointsQ = {}
     local pointsW = {}
     local playerPos = Player.Position
     local minionList = ObjManager.Get("enemy", "minions")
     local isQReady = IsSpellReady(_Q.String)
     local isWReady = IsSpellReady(_W.String)
-
-    local isQReadyForWave = isQReady and not E2Lucian.IsNotEnoughMana("Waveclear", _Q.String)
-    for handle, minion in pairs(minionList) do
-        local distance = minion.Position:Distance(playerPos)
-        local cond = minion.IsVisible and not minion.IsDead and distance <= _W.Range
-        if cond then
-            local minionPos = minion.Position
-            table.insert(pointsW, minionPos)
-            if (isQReadyForWave and distance <= _Q.Range) then
-                table.insert(pointsQ, minionPos)
-                local bestPos, hitCount = Geometry.BestCoveringRectangle(pointsW, playerPos, _Q.Radius * 2)
-                if bestPos and hitCount >= E2Lucian.Menu[mode].UseQMinhit.Value then
-                    Input.Cast(_Q.Slot, minion)
+    if ( useQ ) then
+        local isQReadyForWave = isQReady and not E2Lucian.IsNotEnoughMana("Waveclear", _Q.String)
+        for handle, minion in pairs(minionList) do
+            local distance = minion.Position:Distance(playerPos)
+            local cond = minion.IsVisible and not minion.IsDead and distance <= _W.Range
+            if cond then
+                local minionPos = minion.Position
+                table.insert(pointsW, minionPos)
+                if (isQReadyForWave and distance <= _Q.Range) then
+                    table.insert(pointsQ, minionPos)
+                    local bestPos, hitCount = Geometry.BestCoveringRectangle(pointsW, playerPos, _Q.Radius * 2)
+                    if bestPos and hitCount >= E2Lucian.Menu[mode].UseQMinhit.Value then
+                        Input.Cast(_Q.Slot, minion)
+                    end
                 end
             end
         end
     end
 
-    if (isWReady and not E2Lucian.IsNotEnoughMana("Waveclear", _W.String)) then
-        local bestPos, hitCount = Geometry.BestCoveringRectangle(pointsW, playerPos, _W.Radius * 2)
-        if bestPos and hitCount >= E2Lucian.Menu[mode].UseWMinhit.Value then
-            Input.Cast(_W.Slot, bestPos)
+    if ( useW ) then
+        if (isWReady and not E2Lucian.IsNotEnoughMana("Waveclear", _W.String)) then
+            local bestPos, hitCount = Geometry.BestCoveringRectangle(pointsW, playerPos, _W.Radius * 2)
+            if bestPos and hitCount >= E2Lucian.Menu[mode].UseWMinhit.Value then
+                Input.Cast(_W.Slot, bestPos)
+            end
         end
     end
 
@@ -426,11 +416,11 @@ function E2Lucian.Waveclear()
         local cond = minion.IsVisible and not minion.IsDead and E2Lucian.InvalidMobs[minion.Name] == nil and distance <= _W.Range and not minion.AsMinion.IsJunglePlant
         
         if cond then
-            if (isWReady and not E2Lucian.IsNotEnoughMana("Jungleclear", _W.String)) then
+            if (isWReady and not E2Lucian.IsNotEnoughMana("Jungleclear", _W.String) and useW) then
                 Input.Cast(_W.Slot, minion.Position)
             end
             if (distance <= _Q.Range) then
-                if (isQReady and not E2Lucian.IsNotEnoughMana("Jungleclear", _Q.String)) then
+                if (isQReady and not E2Lucian.IsNotEnoughMana("Jungleclear", _Q.String) and useQ) then
                     Input.Cast(_Q.Slot, minion)
                 end
             end
@@ -472,11 +462,48 @@ function OnDraw()
     end
 end
 
+local function ShouldMagentR()
+    local isCastingR = E2Lucian.IsCastingR()
+    if ( not isCastingR ) then
+        return false
+    end
+    local mode = Orbwalker.GetMode()
+    if ( (mode == "Combo" and E2Lucian.Menu.Combo.UseRMagnet.Value ) or E2Lucian.Menu.Misc.MagnetR.Value) then
+        return true
+    end
+    return false
+end
+
+function E2Lucian.MagnetR()
+    if (E2Lucian.IsCastingR()) then
+        local target = E2Lucian.RTarget
+        if (target and target.IsValid) then
+            local pred = Prediction.GetPredictedPosition(target, _R, Player.Position)
+            if (pred) then
+                Input.MoveTo(pred.CastPosition - E2Lucian.RVector)
+            end
+        end
+    else
+        E2Lucian.RLogic(false, "Misc")
+        Input.MoveTo(Renderer.GetMousePos())
+    end
+end
+
+--args:{Process, Position}
+function OnPreMove(args)
+    local shouldMagentR = ShouldMagentR()
+    if (shouldMagentR) then
+        args.Process = false
+        E2Lucian.MagnetR()
+    end
+end
+
 function OnLoad()
     if Player.CharName == "Lucian" then
         E2Lucian.Init()
         EventManager.RegisterCallback(Enums.Events.OnTick, OnTick)
         EventManager.RegisterCallback(Enums.Events.OnDraw, OnDraw)
+        EventManager.RegisterCallback(Enums.Events.OnPreMove, OnPreMove)
         print("[E2Slayer] E2Lucian is Loaded - " .. format("%.1f", Version))
     end
     return true
