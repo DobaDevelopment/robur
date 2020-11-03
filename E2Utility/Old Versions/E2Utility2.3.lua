@@ -39,7 +39,7 @@ local format = string.format
 -- Copied from Mista's scripts :)
 
 -- Verision
-local Version = 2.4
+local Version = 2.3
 
 local Profiler = _G.Libs.Profiler
 
@@ -72,22 +72,6 @@ local FeaturedClasses = {
 	SSUtility,
 	RecallTracker
 }
-
-local FeaturedClassesInit = {
-	{ShortName = "JGT", FullName = "JungleTimer", FeatureClass = JungleTimer},
-	{ShortName = "CT", FullName = "CloneTracker", FeatureClass = CloneTracker},
-	{ShortName = "IT", FullName = "InhibitorsTimer", FeatureClass = InhibitorsTimer},
-	{ShortName = "DBT", FullName = "DragonBaronTracker", FeatureClass = DragonBaronTracker},
-	{ShortName = "CDT", FullName = "CooldownTracker", FeatureClass = CooldownTracker},
-	{ShortName = "AT", FullName = "Activator", FeatureClass = Activator},
-	{ShortName = "TA", FullName = "TurnAround", FeatureClass = TurnAround},
-	{ShortName = "TR", FullName = "TowerRanges", FeatureClass = TowerRanges},
-	{ShortName = "PT", FullName = "PathTracker", FeatureClass = PathTracker},
-	{ShortName = "BM", FullName = "BlockMinion", FeatureClass = BlockMinion},
-	{ShortName = "SU", FullName = "SSUtility", FeatureClass = SSUtility},
-	{ShortName = "RT", FullName = "RecallTracker", FeatureClass = RecallTracker},
-}
-
 local TextClipper = Vector(30, 15, 0)
 local TickCount = 0
 
@@ -105,23 +89,6 @@ local function SecondsToClock(seconds)
 	return m .. ":" .. (s < 10 and 0 or "") .. s
 end
 
-local function AttachToggleMenu(shortName, fullName, feature)
-	feature.ToggleMenu = Menu:AddMenu(shortName.."_ToggleMenu", fullName)
-	local enable = feature.ToggleMenu:AddBool(shortName.."_Toggle", "Enable "..fullName, true)
-	feature.ToggleMenu:AddLabel(shortName.."_ToggleLabel", "Reload Required to Enable/Disable")
-	if ( not enable.Value ) then
-		for k, v in pairs(Enums.Events) do
-			local event = tostring(k)
-			if ( feature[event] ) then
-				feature[event] = nil
-			end
-		end
-		collectgarbage()
-		return false
-	end
-	return true
-end
-
 --[[
 		██ ██    ██ ███    ██  ██████  ██      ███████     ████████ ██ ███    ███ ███████ ██████  
 		██ ██    ██ ████   ██ ██       ██      ██             ██    ██ ████  ████ ██      ██   ██ 
@@ -130,7 +97,6 @@ end
     █████   ██████  ██   ████  ██████  ███████ ███████        ██    ██ ██      ██ ███████ ██   ██                                                                                                                                                                                          
 ]]
 function JungleTimer.Init()
-
 	-- A Bool to end Rift timer
 	JungleTimer.RiftOver = false
 	JungleTimer.TotalCamps = 16
@@ -278,12 +244,10 @@ function JungleTimer.Init()
 
 	JungleTimer.JungleTimerTable = {821, 783, 61, 762, 131, 59, 820, 66, 499, 394, 288, 703, 400, 500, 866, 7}
 	JungleTimer.Menu()
-
 end
 
-
 function JungleTimer.Menu()
-	JungleTimer.Menu = JungleTimer.ToggleMenu:AddMenu("JGT_Menu", "JungleTimer Menu")
+	JungleTimer.Menu = Menu:AddMenu("JGT_Menu", "JungleTimer")
 	JungleTimer.Menu:AddMenu("JGT_Settings", "Jungle Timer Settings")
 	JungleTimer.Menu.JGT_Settings:AddBool("JGT_DrawMap", "Use on the Map", true)
 	JungleTimer.Menu.JGT_Settings:AddRGBAMenu("JGT_MapTextCol", "Timer Text on Map Color", 0x00FF00FF)
@@ -361,7 +325,7 @@ local function TimerStarter(objHandle)
 	end
 end
 
-function JungleTimer.OnCreateObject(obj)
+function JungleTimer.OnCreate(obj)
 	-- Jungle Timer
 	local menu = JungleTimer.Menu
 	if (menu.JGT_ToggleTimer.Value and JungleTimer.ObjName[obj.Name]) then
@@ -369,7 +333,7 @@ function JungleTimer.OnCreateObject(obj)
 	end
 end
 
-function JungleTimer.OnDeleteObject(obj)
+function JungleTimer.OnDelete(obj)
 	local menu = JungleTimer.Menu
 	if (menu.JGT_ToggleTimer.Value and JungleTimer.ObjName[obj.Name]) then
 		local hashID = GetHash(obj.AsAI.Position.x)
@@ -389,7 +353,6 @@ end
 	 ██████ ███████  ██████  ██   ████ ███████        ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                      
 ]]
 function CloneTracker.Init()
-
 	-- Clone Tracker Variables
 	CloneTracker.CloneEnum = {}
 	CloneTracker.CloneEnumCount = 1
@@ -422,8 +385,8 @@ function CloneTracker.Init()
 
 	if (CloneTracker.CloneEnumCount < 1) then
 		CloneTracker.OnDraw = nil
-		CloneTracker.OnCreateObject = nil
-		CloneTracker.OnDeleteObject = nil
+		CloneTracker.OnCreate = nil
+		CloneTracker.OnDelete = nil
 		CloneTracker.CloneEnum = nil
 		CloneTracker.CloneEnumCount = nil
 		CloneTracker.CloneActiveCount = nil
@@ -437,9 +400,8 @@ function CloneTracker.Init()
 end
 
 function CloneTracker.Menu()
-	
 	-- Start Clone Tracker Menus
-	CloneTracker.Menu = CloneTracker.ToggleMenu:AddMenu("CT_Menu", "CloneTracker")
+	CloneTracker.Menu = Menu:AddMenu("CT_Menu", "CloneTracker")
 	CloneTracker.Menu:AddMenu("CT_Settings", "CloneTracker")
 	CloneTracker.Menu.CT_Settings:AddBool("CT_TrackOnMap", "Track Clones", true)
 	CloneTracker.Menu.CT_Settings:AddRGBAMenu("CT_MapTextCol", "Clone Tracker on Text Color", 0x000000FF)
@@ -478,7 +440,7 @@ function CloneTracker.OnDraw()
 	end
 end
 
-function CloneTracker.OnCreateObject(obj)
+function CloneTracker.OnCreate(obj)
 	local menu = CloneTracker.Menu
 	if (menu.CT_Toggle.Value and obj.IsAI) then
 		local cloneChamp = obj.AsAI
@@ -493,7 +455,7 @@ function CloneTracker.OnCreateObject(obj)
 	end
 end
 
-function CloneTracker.OnDeleteObject(obj)
+function CloneTracker.OnDelete(obj)
 	local menu = CloneTracker.Menu
 	if (menu.CT_Toggle.Value and obj.IsAI) then
 		local cloneChamp = obj.AsAI
@@ -520,7 +482,6 @@ end
 	██ ██   ████ ██   ██ ██ ██████  ██    ██     ██████  ██   ██ ███████        ██    ██ ██      ██ ███████ ██   ██                                                                                                                                                                                                                                                                                                                                                                                                     
 ]]
 function InhibitorsTimer.Init()
-
 	InhibitorsTimer.InhibitorsTable = {
 		-- Blue Top, Mid, Bot
 		[171] = {
@@ -581,8 +542,7 @@ function InhibitorsTimer.Init()
 end
 
 function InhibitorsTimer.Menu()
-
-	InhibitorsTimer.Menu = InhibitorsTimer.ToggleMenu:AddMenu("IT_Menu", "InhibitorsTimer")
+	InhibitorsTimer.Menu = Menu:AddMenu("IT_Menu", "InhibitorsTimer")
 	InhibitorsTimer.Menu:AddMenu("IT_Settings", "Inhibitors Timer Settings")
 	InhibitorsTimer.Menu.IT_Settings:AddBool("IT_TimerText", "Use a Inhibitors Timer Text", true)
 	InhibitorsTimer.Menu.IT_Settings:AddRGBAMenu("IT_TextCol", "Inhibitors Timer Text Color", 0x000000FF)
@@ -593,7 +553,7 @@ function InhibitorsTimer.Menu()
 	InhibitorsTimer.Menu:AddBool("IT_Toggle", "Activate Inhibitors Timer", true)
 end
 
-function InhibitorsTimer.OnDeleteObject(obj)
+function InhibitorsTimer.OnDelete(obj)
 	local comparor = InhibitorsTimer.RespawnComparor[obj.Name]
 	if (InhibitorsTimer.Menu.IT_Toggle.Value and comparor) then
 		local hash = GetHash(obj.Position.x)
@@ -703,7 +663,7 @@ function DragonBaronTracker.Init()
 end
 
 function DragonBaronTracker.Menu()
-	DragonBaronTracker.Menu = DragonBaronTracker.ToggleMenu:AddMenu("DBTracker", "DragonBaronTracker")
+	DragonBaronTracker.Menu = Menu:AddMenu("DBTracker", "DragonBaronTracker")
 	DragonBaronTracker.Menu:AddMenu("DBT_Settings", "Dragon Baron Tracker Settings")
 	DragonBaronTracker.Menu.DBT_Settings:AddBool("DBT_DragonToggle", "Track Dragon", true)
 	DragonBaronTracker.Menu.DBT_Settings:AddRGBAMenu("DBT_DragonTextCol", "Dragon Tracker Text Color", 0x000000FF)
@@ -722,7 +682,7 @@ local function IsBaronAttacking()
 	end
 end
 
-function DragonBaronTracker.OnDeleteObject(obj)
+function DragonBaronTracker.OnDelete(obj)
 	local menu = DragonBaronTracker.Menu
 	if (menu.DBT_Toggle.Value) then
 		local DragonBaronTable = DragonBaronTracker.DragonBaronTable[obj.Name]
@@ -915,7 +875,7 @@ function CooldownTracker.Init()
 end
 
 function CooldownTracker.Menu()
-	CooldownTracker.Menu = CooldownTracker.ToggleMenu:AddMenu("CDTracker", "CooldownTracker")
+	CooldownTracker.Menu = Menu:AddMenu("CDTracker", "CooldownTracker")
 	CooldownTracker.Menu:AddMenu("CDTracker_Settings", "Cooldown Tracker Settings")
 	CooldownTracker.Menu.CDTracker_Settings:AddBool("CDTracker_TrackMe", "Track Me", true)
 	CooldownTracker.Menu.CDTracker_Settings:AddBool("CDTracker_TrackAlly", "Track Ally", true)
@@ -1227,7 +1187,7 @@ function Activator.Init()
 end
 
 function Activator.Menu()
-	Activator.Menu = Activator.ToggleMenu:AddMenu("Activator", "Activator")
+	Activator.Menu = Menu:AddMenu("Activator", "Activator")
 	TS = _G.Libs.TargetSelector(Activator.Menu)
 	Activator.Menu:AddMenu("Offensive", "Offensive")
 	for k, v in pairs(Activator.Offensive) do
@@ -1375,7 +1335,7 @@ function TurnAround.Init()
 end
 
 function TurnAround.Menu()
-	TurnAround.Menu = TurnAround.ToggleMenu:AddMenu("TA_Menu", "TurnAround")
+	TurnAround.Menu = Menu:AddMenu("TA_Menu", "TurnAround")
 	TurnAround.Menu:AddBool("TA_Toggle", "Activate TurnAround", true)
 	TurnAround.Menu:AddLabel("TA_Label", "Cassiopeia/Tryndamere Supported", true)
 end
@@ -1429,7 +1389,7 @@ function TowerRanges.Init()
 end
 
 function TowerRanges.Menu()
-	TowerRanges.Menu = TowerRanges.ToggleMenu:AddMenu("TR_Menu", "TowerRanges")
+	TowerRanges.Menu = Menu:AddMenu("TR_Menu", "TowerRanges")
 	TowerRanges.Menu:AddBool("TR_Enemy", "Track Enemy Towers", true)
 	TowerRanges.Menu:AddRGBAMenu("TR_EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
 	TowerRanges.Menu:AddBool("TR_Ally", "Track Ally Towers", true)
@@ -1487,7 +1447,7 @@ function PathTracker.Init()
 end
 
 function PathTracker.Menu()
-	PathTracker.Menu = PathTracker.ToggleMenu:AddMenu("PT_Menu", "PathTracker")
+	PathTracker.Menu = Menu:AddMenu("PT_Menu", "PathTracker")
 	PathTracker.Menu:AddBool("PT_Enemy", "Track Enemy", true)
 	PathTracker.Menu:AddBool("PT_Ally", "Track Ally", false)
 	PathTracker.Menu:AddBool("PT_Waypoints", "Track Waypoints", true)
@@ -1608,7 +1568,7 @@ function BlockMinion.Init()
 end
 
 function BlockMinion.Menu()
-	BlockMinion.Menu = BlockMinion.ToggleMenu:AddMenu("BM_Menu", "BlockMinion")
+	BlockMinion.Menu = Menu:AddMenu("BM_Menu", "BlockMinion")
 	BlockMinion.Menu:AddBool("BM_Toggle", "Activate Block Minion", true)
 	BlockMinion.Menu:AddKeyBind("BM_Key", "Blocking Key", 90) -- 90 is Z
 end
@@ -1740,7 +1700,7 @@ function SSUtility.Init()
 end
 
 function SSUtility.Menu()
-	SSUtility.Menu = SSUtility.ToggleMenu:AddMenu("SU_Menu", "SSUtility")
+	SSUtility.Menu = Menu:AddMenu("SU_Menu", "SSUtility")
 	SSUtility.Menu:AddBool("SU_Ignite", "Block Flash 1", true)
 	SSUtility.Menu:AddLabel("SU_IgniteLabel", "^- If you die from Ignite")
 	SSUtility.Menu:AddBool("SU_OverWall", "Block Flash 2", true)
@@ -1868,7 +1828,7 @@ function RecallTracker.Init()
 end
 
 function RecallTracker.Menu()
-	RecallTracker.Menu = RecallTracker.ToggleMenu:AddMenu("RT_Menu", "RecallTracker")
+	RecallTracker.Menu = Menu:AddMenu("RT_Menu", "RecallTracker")
 	RecallTracker.Menu:AddBool("RT_Toggle", "Activate Recall Tracker", true)
 	RecallTracker.Menu:AddKeyBind("RT_Key", "Adjust Key (Default: Shift)", 16) -- 16 is Left Shift
 	RecallTracker.Menu:AddBool("RT_AdjustToggle", "Adjust Position", true)
@@ -2025,75 +1985,35 @@ end
 	██      ██ ██   ██ ██ ██   ████ 
 ]]
 function OnUnkillableMinion(minion)
-	local unkillable = Activator.OnUnkillableMinion
-	if ( unkillable ) then
-		unkillable(minion)
-	else
-		EventManager.RemoveCallback(Enums.Events.OnUnkillableMinion, OnUnkillableMinion)
-	end
+	Activator.OnUnkillableMinion(minion)
 end
 
 function OnUpdate()
-	local update = BlockMinion.OnUpdate
-	if ( update ) then
-		update()
-	else
-		EventManager.RemoveCallback(Enums.Events.OnUpdate, OnUpdate)
-	end
+	BlockMinion.OnUpdate()
 end
 
 function OnIssueOrder(Args)
-	local issueOrder = TurnAround.OnIssueOrder
-	if ( issueOrder ) then
-		TurnAround.OnIssueOrder(Args)
-	else
-		EventManager.RemoveCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
-	end
+	TurnAround.OnIssueOrder(Args)
 end
 
 function OnProcessSpell(obj, spellcast)
-	local onProcess = TurnAround.OnProcessSpell
-	if ( onProcess ) then
-		onProcess(obj, spellcast)
-	else
-		EventManager.RemoveCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
-	end
+	TurnAround.OnProcessSpell(obj, spellcast)
 end
 
 function OnNewPath(obj, pathing)
-	local onPath = PathTracker.OnNewPath
-	if ( onPath ) then
-		onPath(obj, pathing)
-	else
-		EventManager.RemoveCallback(Enums.Events.OnNewPath, OnNewPath)
-	end
+	PathTracker.OnNewPath(obj, pathing)
 end
 
 function OnCastSpell(Args)
-	local onCast = SSUtility.OnCastSpell
-	if ( onCast ) then
-		onCast(Args)
-	else
-		EventManager.RemoveCallback(Enums.Events.OnCastSpell, OnCastSpell)
-	end
+	SSUtility.OnCastSpell(Args)
 end
 
 function OnTeleport(obj, name, duration_secs, status)
-	local onTP = RecallTracker.OnTeleport
-	if ( onTP ) then
-		onTP(obj, name, duration_secs, status)
-	else
-		EventManager.RemoveCallback(Enums.Events.OnTeleport, OnTeleport)
-	end
+	RecallTracker.OnTeleport(obj, name, duration_secs, status)
 end
 
 function OnMouseEvent(e, message, wparam, lparam)
-	local onMouse = RecallTracker.OnMouseEvent
-	if ( onMouse ) then
-		onMouse(e)
-	else
-		EventManager.RemoveCallback(Enums.Events.OnMouseEvent, OnMouseEvent)
-	end
+	RecallTracker.OnMouseEvent(e)
 end
 
 function OnTick()
@@ -2118,24 +2038,24 @@ function OnDraw()
 	end
 end
 
-function OnCreateObject(obj)
+function OnCreate(obj)
 	if (obj == nil) then
 		return
 	end
 	for i = 1, #FeaturedClasses do
-		local onCreate = FeaturedClasses[i].OnCreateObject
+		local onCreate = FeaturedClasses[i].OnCreate
 		if (onCreate ~= nil) then
 			onCreate(obj)
 		end
 	end
 end
 
-function OnDeleteObject(obj)
+function OnDelete(obj)
 	if (obj == nil) then
 		return
 	end
 	for i = 1, #FeaturedClasses do
-		local onDelete = FeaturedClasses[i].OnDeleteObject
+		local onDelete = FeaturedClasses[i].OnDelete
 		if (onDelete ~= nil) then
 			onDelete(obj)
 		end
@@ -2146,8 +2066,8 @@ function OnLoad()
 	EventManager.RegisterCallback(Enums.Events.OnUpdate, OnUpdate)
 	EventManager.RegisterCallback(Enums.Events.OnTick, OnTick)
 	EventManager.RegisterCallback(Enums.Events.OnDraw, OnDraw)
-	EventManager.RegisterCallback(Enums.Events.OnCreateObject, OnCreateObject)
-	EventManager.RegisterCallback(Enums.Events.OnDeleteObject, OnDeleteObject)
+	EventManager.RegisterCallback(Enums.Events.OnCreateObject, OnCreate)
+	EventManager.RegisterCallback(Enums.Events.OnDeleteObject, OnDelete)
 	EventManager.RegisterCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
 	EventManager.RegisterCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
 	EventManager.RegisterCallback(Enums.Events.OnNewPath, OnNewPath)
@@ -2156,13 +2076,10 @@ function OnLoad()
 	EventManager.RegisterCallback(Enums.Events.OnTeleport, OnTeleport)
 	EventManager.RegisterCallback(Enums.Events.OnMouseEvent, OnMouseEvent)
 
-	for k, v in pairs(FeaturedClassesInit) do
-		local toggle = AttachToggleMenu(v.ShortName, v.FullName, v.FeatureClass)
-		if (toggle) then
-			local Init = v.FeatureClass.Init
-			if (Init) then
-				Init()
-			end
+	for i = 1, #FeaturedClasses do
+		local Init = FeaturedClasses[i].Init
+		if (Init ~= nil) then
+			Init()
 		end
 	end
 
