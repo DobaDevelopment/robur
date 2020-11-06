@@ -2,60 +2,93 @@ require("common.log")
 module("E2Utility", package.seeall, log.setup)
 
 local _Core = _G.CoreEx
-local ObjManager, EventManager, Input, Enums, Game, Geometry, Renderer, Vector,
-      Collision, Orbwalker, Prediction, Nav, HitChance, Profiler, TS, Menu =
-    _Core.ObjectManager, _Core.EventManager, _Core.Input, _Core.Enums,
-    _Core.Game, _Core.Geometry, _Core.Renderer, _Core.Geometry.Vector,
-    _G.Libs.CollisionLib, _G.Libs.Orbwalker, _G.Libs.Prediction, _Core.Nav,
-    _Core.Enums.HitChance, _G.Libs.Profiler, _G.Libs.TargetSelector(),
-    _G.Libs.NewMenu
+local ObjManager,
+	EventManager,
+	Input,
+	Enums,
+	Game,
+	Geometry,
+	Renderer,
+	Vector,
+	Collision,
+	Orbwalker,
+	Prediction,
+	Nav,
+	HitChance =
+	_Core.ObjectManager,
+	_Core.EventManager,
+	_Core.Input,
+	_Core.Enums,
+	_Core.Game,
+	_Core.Geometry,
+	_Core.Renderer,
+	_Core.Geometry.Vector,
+	_G.Libs.CollisionLib,
+	_G.Libs.Orbwalker,
+	_G.Libs.Prediction,
+	_G.CoreEx.Nav,
+	_G.CoreEx.Enums.HitChance
 local itemID = require("lol\\Modules\\Common\\itemID")
 local SpellSlots, SpellStates = Enums.SpellSlots, Enums.SpellStates
 local Player = ObjManager.Player
-local OSClock, floor, format = os.clock, math.floor, string.format
-local Version = 2.5
 
+local OSClock = os.clock
+local floor = math.floor
+local format = string.format
+
+-- Copied from Mista's scripts :)
+
+-- Verision
+local Version = 2.4
+
+local Profiler = _G.Libs.Profiler
+
+-- Menu
+local Menu = _G.Libs.Menu:AddMenu("E2Utility", "E2Utility")
 local JungleTimer = {}
 local CloneTracker = {}
 local InhibitorsTimer = {}
 local DragonBaronTracker = {}
 local CooldownTracker = {}
 local Activator = {}
+local TS = {}
 local TurnAround = {}
 local TowerRanges = {}
 local PathTracker = {}
 local BlockMinion = {}
 local SSUtility = {}
 local RecallTracker = {}
-
-local ActiveFeaturedClasses = {}
-
-local FeatureType = {
-    Activators = 1,
-    Detectors = 2,
-    Drawings = 3,
-    Timers = 4,
-    Trackers = 5,
-    Others = 6
+local FeaturedClasses = {
+	JungleTimer,
+	CloneTracker,
+	InhibitorsTimer,
+	DragonBaronTracker,
+	CooldownTracker,
+	Activator,
+	TurnAround,
+	TowerRanges,
+	PathTracker,
+	BlockMinion,
+	SSUtility,
+	RecallTracker
 }
 
 local FeaturedClassesInit = {
-	{ShortName = "JGT", FullName = "JungleTimer", FeatureClass = JungleTimer, Type = FeatureType.Timers},
-	{ShortName = "CT", FullName = "CloneTracker", FeatureClass = CloneTracker, Type = FeatureType.Trackers},
-	{ShortName = "IT", FullName = "InhibitorsTimer", FeatureClass = InhibitorsTimer, Type = FeatureType.Timers},
-	{ShortName = "DBT", FullName = "DragonBaronTracker", FeatureClass = DragonBaronTracker, Type = FeatureType.Trackers},
-	{ShortName = "CDT", FullName = "CooldownTracker", FeatureClass = CooldownTracker, Type = FeatureType.Trackers},
-	{ShortName = "AT", FullName = "Activator", FeatureClass = Activator, Type = FeatureType.Activators},
-	{ShortName = "TA", FullName = "TurnAround", FeatureClass = TurnAround, Type = FeatureType.Detectors},
-	{ShortName = "TR", FullName = "TowerRanges", FeatureClass = TowerRanges, Type = FeatureType.Drawings},
-	{ShortName = "PT", FullName = "PathTracker", FeatureClass = PathTracker, Type = FeatureType.Trackers},
-	{ShortName = "BM", FullName = "BlockMinion", FeatureClass = BlockMinion, Type = FeatureType.Others},
-	{ShortName = "SU", FullName = "SSUtility", FeatureClass = SSUtility, Type = FeatureType.Others},
-	{ShortName = "RT", FullName = "RecallTracker", FeatureClass = RecallTracker, Type = FeatureType.Trackers},
+	{ShortName = "JGT", FullName = "JungleTimer", FeatureClass = JungleTimer},
+	{ShortName = "CT", FullName = "CloneTracker", FeatureClass = CloneTracker},
+	{ShortName = "IT", FullName = "InhibitorsTimer", FeatureClass = InhibitorsTimer},
+	{ShortName = "DBT", FullName = "DragonBaronTracker", FeatureClass = DragonBaronTracker},
+	{ShortName = "CDT", FullName = "CooldownTracker", FeatureClass = CooldownTracker},
+	{ShortName = "AT", FullName = "Activator", FeatureClass = Activator},
+	{ShortName = "TA", FullName = "TurnAround", FeatureClass = TurnAround},
+	{ShortName = "TR", FullName = "TowerRanges", FeatureClass = TowerRanges},
+	{ShortName = "PT", FullName = "PathTracker", FeatureClass = PathTracker},
+	{ShortName = "BM", FullName = "BlockMinion", FeatureClass = BlockMinion},
+	{ShortName = "SU", FullName = "SSUtility", FeatureClass = SSUtility},
+	{ShortName = "RT", FullName = "RecallTracker", FeatureClass = RecallTracker},
 }
 
 local TextClipper = Vector(30, 15, 0)
-local TextClipperLarger = Vector(100, 15,0)
 local TickCount = 0
 
 ---@param arg number(float)
@@ -70,6 +103,23 @@ end
 local function SecondsToClock(seconds)
 	local m, s = floor(seconds / 60), floor(seconds % 60)
 	return m .. ":" .. (s < 10 and 0 or "") .. s
+end
+
+local function AttachToggleMenu(shortName, fullName, feature)
+	feature.ToggleMenu = Menu:AddMenu(shortName.."_ToggleMenu", fullName)
+	local enable = feature.ToggleMenu:AddBool(shortName.."_Toggle", "Enable "..fullName, true)
+	feature.ToggleMenu:AddLabel(shortName.."_ToggleLabel", "Reload Required to Enable/Disable")
+	if ( not enable.Value ) then
+		for k, v in pairs(Enums.Events) do
+			local event = tostring(k)
+			if ( feature[event] ) then
+				feature[event] = nil
+			end
+		end
+		collectgarbage()
+		return false
+	end
+	return true
 end
 
 --[[
@@ -227,36 +277,36 @@ function JungleTimer.Init()
 	}
 
 	JungleTimer.JungleTimerTable = {821, 783, 61, 762, 131, 59, 820, 66, 499, 394, 288, 703, 400, 500, 866, 7}
+	JungleTimer.Menu()
+
 end
 
 
 function JungleTimer.Menu()
-    local str = "JungleTimer"
-    local shortName = "JGT"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".DrawMap", "Draw Timer on the Map", true)
-        Menu.ColorPicker(shortName..".DrawMapColor", "Timer Text on Map Color", 0x00FF00FF)
-        Menu.Checkbox(shortName..".DrawMapBG", "Use a Background on Timer", true)
-        Menu.ColorPicker(shortName..".DrawMapBGColor", "Background Color", 0x008000FF)
-        Menu.Checkbox(shortName..".DrawMiniMap", "Draw Timer on the MiniMap", true)
-        Menu.ColorPicker(shortName..".DrawMiniMapColor", "Timer Text on MiniMap Color", 0x00FF00FF)
-        Menu.Text("A Unique Feature Included")
-        Menu.Text("Read the forum for the details")
-    end)
+	JungleTimer.Menu = JungleTimer.ToggleMenu:AddMenu("JGT_Menu", "JungleTimer Menu")
+	JungleTimer.Menu:AddMenu("JGT_Settings", "Jungle Timer Settings")
+	JungleTimer.Menu.JGT_Settings:AddBool("JGT_DrawMap", "Use on the Map", true)
+	JungleTimer.Menu.JGT_Settings:AddRGBAMenu("JGT_MapTextCol", "Timer Text on Map Color", 0x00FF00FF)
+	JungleTimer.Menu.JGT_Settings:AddBool("JGT_BGColT", "Use a Background Color", true)
+	JungleTimer.Menu.JGT_Settings:AddRGBAMenu("JGT_BGCol", "Background Color", 0x008000FF)
+	JungleTimer.Menu.JGT_Settings:AddBool("JGT_OnMinimap", "Use on the Minimap", true)
+	JungleTimer.Menu.JGT_Settings:AddRGBAMenu("JGT_MiniMapTextCol", "Timer Text on Minimap Color", 0x00FF00FF)
+	JungleTimer.Menu:AddBool("JGT_ToggleTimer", "Activate Jungle Timer", true)
+	JungleTimer.Menu:AddLabel("JGT_ExplainLabel", "A Unique Feature Included")
+	JungleTimer.Menu:AddLabel("JGT_ExplainLabel2", "Read the forum for the details")
 end
 
 function JungleTimer.OnDraw()
 	-- ForLooping only table has at least one element
-	if (#JungleTimer.JungleTimerTable > 0) then
+	local menu = JungleTimer.Menu
+	if (menu.JGT_ToggleTimer.Value and #JungleTimer.JungleTimerTable > 0) then
 		local currentGameTime = Game:GetTime()
 		local totalCamps = JungleTimer.TotalCamps
-        local JungleMobsData = JungleTimer.JungleMobsData
-        local drawMap = Menu.Get("JGT.DrawMap", true)
-        local drawMapColor = Menu.Get("JGT.DrawMapColor", true)
-        local drawMapBG = Menu.Get("JGT.DrawMapBG", true)
-        local drawMapBGColor = Menu.Get("JGT.DrawMapBGColor", true)
-        local drawMinimap = Menu.Get("JGT.DrawMiniMap", true)
-        local drawMinimapColor = Menu.Get("JGT.DrawMiniMapColor", true)
+		local JungleMobsData = JungleTimer.JungleMobsData
+		menu = JungleTimer.Menu.JGT_Settings
+		local drawMap = menu.JGT_DrawMap.Value
+		local drawMapBG = menu.JGT_BGColT.Value
+		local drawMinimap = menu.JGT_OnMinimap.Value
 		for i = 1, totalCamps do
 			local hash = JungleTimer.JungleTimerTable[i]
 			if (JungleMobsData[hash]["active"]) then
@@ -278,14 +328,14 @@ function JungleTimer.OnDraw()
 							local worldPos = Renderer.WorldToScreen(pos)
 							if (drawMap) then
 								if (drawMapBG) then
-									Renderer.DrawFilledRect(worldPos, TextClipper, 2, drawMapBGColor)
+									Renderer.DrawFilledRect(worldPos, TextClipper, 2, menu.JGT_BGCol.Value)
 								end
-								Renderer.DrawText(worldPos, TextClipper, time, drawMapColor)
+								Renderer.DrawText(worldPos, TextClipper, time, menu.JGT_MapTextCol.Value)
 							end
 						end
 						if (drawMinimap) then
 							local miniPos = Renderer.WorldToMinimap(pos) + Vector(-10, -10, 0)
-							Renderer.DrawText(miniPos, TextClipper, time, drawMinimapColor)
+							Renderer.DrawText(miniPos, TextClipper, time, menu.JGT_MiniMapTextCol.Value)
 						end
 					end
 				end
@@ -312,13 +362,16 @@ local function TimerStarter(objHandle)
 end
 
 function JungleTimer.OnCreateObject(obj)
-    if (JungleTimer.ObjName[obj.Name]) then
+	-- Jungle Timer
+	local menu = JungleTimer.Menu
+	if (menu.JGT_ToggleTimer.Value and JungleTimer.ObjName[obj.Name]) then
 		delay(100, TimerStarter, obj.Handle)
 	end
 end
 
 function JungleTimer.OnDeleteObject(obj)
-	if (JungleTimer.ObjName[obj.Name]) then
+	local menu = JungleTimer.Menu
+	if (menu.JGT_ToggleTimer.Value and JungleTimer.ObjName[obj.Name]) then
 		local hashID = GetHash(obj.AsAI.Position.x)
 		local target = JungleTimer.JungleMobsData[hashID]
 		if (target) then
@@ -367,48 +420,57 @@ function CloneTracker.Init()
 		end
 	end
 
-    -- if there is no clone champion on the enemy team
 	if (CloneTracker.CloneEnumCount < 1) then
 		CloneTracker.OnDraw = nil
 		CloneTracker.OnCreateObject = nil
 		CloneTracker.OnDeleteObject = nil
-        collectgarbage()
+		CloneTracker.CloneEnum = nil
+		CloneTracker.CloneEnumCount = nil
+		CloneTracker.CloneActiveCount = nil
+		CloneTracker.CloneAdjustment = nil
+		CloneTracker.CloneTrackerList = nil
+		CloneTracker.Text = nil
+		CloneTracker.TextRectVec = nil
 	end
+
+	CloneTracker.Menu()
 end
 
 function CloneTracker.Menu()
-
-    local str = "CloneTracker"
-    local shortName = "CT"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".TrackOnMap", "Track Clones", true)
-        Menu.ColorPicker(shortName..".TrackOnMapColor", "Clone Tracker on Text Color", 0x000000FF)
-        Menu.Checkbox(shortName..".TrackOnMapBG", "Use a Background on Clone", true)
-        Menu.ColorPicker(shortName..".TrackOnMapBGColor", "Background Color", 0xDF0101FF)
-        Menu.Text("Works on Shaco/Wukong/Leblanc/Neeko")
-    end)
+	
+	-- Start Clone Tracker Menus
+	CloneTracker.Menu = CloneTracker.ToggleMenu:AddMenu("CT_Menu", "CloneTracker")
+	CloneTracker.Menu:AddMenu("CT_Settings", "CloneTracker")
+	CloneTracker.Menu.CT_Settings:AddBool("CT_TrackOnMap", "Track Clones", true)
+	CloneTracker.Menu.CT_Settings:AddRGBAMenu("CT_MapTextCol", "Clone Tracker on Text Color", 0x000000FF)
+	CloneTracker.Menu.CT_Settings:AddBool("CT_DrawBGCol", "Use a Clone Background Color", true)
+	CloneTracker.Menu.CT_Settings:AddRGBAMenu("CT_BGCol", "Clone Background Color", 0xDF0101FF)
+	CloneTracker.Menu:AddBool("CT_Toggle", "Activate Clone Tracker", true)
+	CloneTracker.Menu:AddLabel("CT_InfoLabel", "Works on Shaco/Wukong/Leblanc/Neeko")
+	-- End of Clone Tracker Section
 end
 
 function CloneTracker.OnDraw()
-	if (CloneTracker.CloneActiveCount > 0) then
+	local menu = CloneTracker.Menu
+	if (menu.CT_Toggle.Value and CloneTracker.CloneActiveCount > 0) then
 		local enumCount = CloneTracker.CloneEnumCount - 1
 		local cloneTracker = CloneTracker.CloneTrackerList
-        local drawMap = Menu.Get("CT.TrackOnMap", true)
-        local drawMapColor = Menu.Get("CT.TrackOnMapColor", true)
-        local drawMapBG = Menu.Get("CT.TrackOnMapBG", true)
-        local drawMapBGColor = Menu.Get("CT.TrackOnMapBGColor", true)
-
+		menu = CloneTracker.Menu.CT_Settings
+		local drawBG = menu.CT_DrawBGCol.Value
+		local drawBGColor = menu.CT_BGCol.Value
+		local trackmap = menu.CT_TrackOnMap.Value
+		local trackmapColor = menu.CT_MapTextCol.Value
 		for i = 1, enumCount do
 			local charName = CloneTracker.CloneEnum[i]
 			if (cloneTracker[charName][1] and cloneTracker[charName][2] == true) then
 				local pos = cloneTracker[charName][1].Position
 				if (Renderer.IsOnScreen(pos)) then
 					local posw2s = Renderer.WorldToScreen(pos) + CloneTracker.CloneAdjustment
-					if (drawMapBG) then
-						Renderer.DrawFilledRect(posw2s, CloneTracker.TextRectVec, 2, drawMapBGColor)
+					if (drawBG) then
+						Renderer.DrawFilledRect(posw2s, CloneTracker.TextRectVec, 2, drawBGColor)
 					end
-					if (drawMap) then
-						Renderer.DrawText(posw2s, TextClipperLarger, CloneTracker.Text, drawMapColor)
+					if (trackmap) then
+						Renderer.DrawText(posw2s, TextClipper, CloneTracker.Text, trackmapColor)
 					end
 				end
 			end
@@ -417,7 +479,8 @@ function CloneTracker.OnDraw()
 end
 
 function CloneTracker.OnCreateObject(obj)
-	if (obj.IsAI) then
+	local menu = CloneTracker.Menu
+	if (menu.CT_Toggle.Value and obj.IsAI) then
 		local cloneChamp = obj.AsAI
 		if (cloneChamp ~= nil and cloneChamp.IsValid) then
 			local cloneTracker = CloneTracker.CloneTrackerList
@@ -431,7 +494,8 @@ function CloneTracker.OnCreateObject(obj)
 end
 
 function CloneTracker.OnDeleteObject(obj)
-	if (obj.IsAI) then
+	local menu = CloneTracker.Menu
+	if (menu.CT_Toggle.Value and obj.IsAI) then
 		local cloneChamp = obj.AsAI
 		if (cloneChamp and cloneChamp.IsValid) then
 			local cloneTracker = CloneTracker.CloneTrackerList
@@ -513,24 +577,25 @@ function InhibitorsTimer.Init()
 		end
 	end
 
+	InhibitorsTimer.Menu()
 end
 
 function InhibitorsTimer.Menu()
-    local str = "InhibitorsTimer"
-    local shortName = "IT"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".TrackOnMap", "Use a Inhibitors Timer on Map", true)
-        Menu.ColorPicker(shortName..".TrackOnMapColor", "Inhibitors Timer on Map Color", 0x000000FF)
-        Menu.Checkbox(shortName..".TrackOnMapBG", "Use a Background on Map", true)
-        Menu.ColorPicker(shortName..".TrackOnMapBGColor", "Background Color", 0xDF0101FF)
-        Menu.Checkbox(shortName..".TrackOnMiniMap", "Use a Inhibitors Timer on MiniMap", true)
-        Menu.ColorPicker(shortName..".TrackOnMiniMapColor", "Inhibitors Timer on MiniMap Color", 0x00FF00FF)
-    end)
+
+	InhibitorsTimer.Menu = InhibitorsTimer.ToggleMenu:AddMenu("IT_Menu", "InhibitorsTimer")
+	InhibitorsTimer.Menu:AddMenu("IT_Settings", "Inhibitors Timer Settings")
+	InhibitorsTimer.Menu.IT_Settings:AddBool("IT_TimerText", "Use a Inhibitors Timer Text", true)
+	InhibitorsTimer.Menu.IT_Settings:AddRGBAMenu("IT_TextCol", "Inhibitors Timer Text Color", 0x000000FF)
+	InhibitorsTimer.Menu.IT_Settings:AddBool("IT_BGToggle", "Use a Inhibitors Timer Background", true)
+	InhibitorsTimer.Menu.IT_Settings:AddRGBAMenu("IT_BGCol", "Inhibitors Timer Background Color", 0xDF0101FF)
+	InhibitorsTimer.Menu.IT_Settings:AddBool("IT_MapToggle", "Use a Inhibitors Timer Minimap", false)
+	InhibitorsTimer.Menu.IT_Settings:AddRGBAMenu("IT_MapCol", "Inhibitors Timer Minimap Color", 0x00FF00FF)
+	InhibitorsTimer.Menu:AddBool("IT_Toggle", "Activate Inhibitors Timer", true)
 end
 
 function InhibitorsTimer.OnDeleteObject(obj)
 	local comparor = InhibitorsTimer.RespawnComparor[obj.Name]
-	if (comparor) then
+	if (InhibitorsTimer.Menu.IT_Toggle.Value and comparor) then
 		local hash = GetHash(obj.Position.x)
 		local InhibitorsTable = InhibitorsTimer.InhibitorsTable[hash]
 		if (InhibitorsTable) then
@@ -551,15 +616,8 @@ function InhibitorsTimer.OnDeleteObject(obj)
 end
 
 function InhibitorsTimer.OnDraw()
-
-    if (InhibitorsTimer.DestroyedInhibitors > 0) then
-        local drawMap = Menu.Get("IT.TrackOnMap", true)
-        local drawMapColor = Menu.Get("IT.TrackOnMapColor", true)
-        local drawMapBG = Menu.Get("IT.TrackOnMapBG", true)
-        local drawMapBGColor = Menu.Get("IT.TrackOnMapBGColor", true)
-        local drawMiniMap = Menu.Get("IT.TrackOnMiniMap", true)
-        local drawMiniMapColor = Menu.Get("IT.TrackOnMiniMapColor", true)
-
+	local menu = InhibitorsTimer.Menu
+	if (menu.IT_Toggle.Value and InhibitorsTimer.DestroyedInhibitors > 0) then
 		for i = 1, InhibitorsTimer.Inhibitors do
 			local index = InhibitorsTimer.InhibitorsEnum[i]
 			if (InhibitorsTimer.InhibitorsTable[index].IsDestroyed) then
@@ -575,19 +633,19 @@ function InhibitorsTimer.OnDraw()
 					local pos = InhibitorsTimer.InhibitorsTable[index].Position
 					local posw2s = Renderer.WorldToScreen(pos)
 					local posw2m = Renderer.WorldToMinimap(pos) + Vector(-15, -10, 0)
-
+					menu = InhibitorsTimer.Menu.IT_Settings
 					--draw only pos is on the screen
 					if (Renderer.IsOnScreen(pos)) then
-						if (drawMap) then
-							if (drawMapBG) then
-								Renderer.DrawFilledRect(posw2s, TextClipper, 2, drawMapBGColor)
+						if (menu.IT_TimerText.Value) then
+							if (menu.IT_BGToggle.Value) then
+								Renderer.DrawFilledRect(posw2s, TextClipper, 2, menu.IT_BGCol.Value)
 							end
-							Renderer.DrawText(posw2s, TextClipper, timeleft, drawMapColor)
+							Renderer.DrawText(posw2s, TextClipper, timeleft, menu.IT_TextCol.Value)
 						end
 					end
 
-					if (drawMiniMap) then
-						Renderer.DrawText(posw2m, TextClipper, timeleft, drawMiniMapColor)
+					if (menu.IT_MapToggle.Value) then
+						Renderer.DrawText(posw2m, TextClipper, timeleft, menu.IT_MapCol.Value)
 					end
 				end
 			end
@@ -641,21 +699,20 @@ function DragonBaronTracker.Init()
 	DragonBaronTracker.BaronActiveStatus = 0
 	DragonBaronTracker.TextClipper = Vector(200, 15, 0)
 
+	DragonBaronTracker.Menu()
 end
 
 function DragonBaronTracker.Menu()
-    local str = "DragonBaronTracker"
-    local shortName = "DBT"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".TrackDragon", "Track Dragon", true)
-        Menu.ColorPicker(shortName..".TrackDragonColor", "Dragon Tracker Text Color", 0x000000FF)
-        Menu.ColorPicker(shortName..".TrackDragonBGColor", "Dragon Tracker Background Color", 0xCC6600FF)
-        Menu.Checkbox(shortName..".TrackBaron", "Track Baron", true)
-        Menu.ColorPicker(shortName..".TrackBaronColor", "Baron Tracker Text Color", 0x000000FF)
-        Menu.ColorPicker(shortName..".TrackBaronBGColor", "Baron Tracker Background Color", 0x990099FF)
-        Menu.Text("The Tracker Works on Fog of War as Well")
-    end)
-
+	DragonBaronTracker.Menu = DragonBaronTracker.ToggleMenu:AddMenu("DBTracker", "DragonBaronTracker")
+	DragonBaronTracker.Menu:AddMenu("DBT_Settings", "Dragon Baron Tracker Settings")
+	DragonBaronTracker.Menu.DBT_Settings:AddBool("DBT_DragonToggle", "Track Dragon", true)
+	DragonBaronTracker.Menu.DBT_Settings:AddRGBAMenu("DBT_DragonTextCol", "Dragon Tracker Text Color", 0x000000FF)
+	DragonBaronTracker.Menu.DBT_Settings:AddRGBAMenu("DBT_DragonBGCol", "Dragon Tracker Background Color", 0xCC6600FF)
+	DragonBaronTracker.Menu.DBT_Settings:AddBool("DBT_BaronToggle", "Track Baron", true)
+	DragonBaronTracker.Menu.DBT_Settings:AddRGBAMenu("DBT_BaronTextCol", "Baron Tracker Text Color", 0x000000FF)
+	DragonBaronTracker.Menu.DBT_Settings:AddRGBAMenu("DBT_BaronBGCol", "Baron Tracker Background Color", 0x990099FF)
+	DragonBaronTracker.Menu:AddBool("DBT_Toggle", "Activate Dragon Baron Tracker", true)
+	DragonBaronTracker.Menu:AddLabel("DBT_ExploitLabel", "The Exploit Works on Fog of War")
 end
 
 local function IsBaronAttacking()
@@ -666,58 +723,56 @@ local function IsBaronAttacking()
 end
 
 function DragonBaronTracker.OnDeleteObject(obj)
-    local DragonBaronTable = DragonBaronTracker.DragonBaronTable[obj.Name]
-    if (DragonBaronTable) then
-        DragonBaronTracker.DragonBaronStatus[DragonBaronTable.IsDragon] = DragonBaronTable.IsAttacking
-        -- only baron
-        if (DragonBaronTable.IsDragon == 2 and DragonBaronTable.IsAttacking ~= 3) then
-            local time = OSClock()
-            DragonBaronTracker.BaronActiveStatus = time + 2.0
-            delay(3000, IsBaronAttacking)
-        end
-    end
-	
+	local menu = DragonBaronTracker.Menu
+	if (menu.DBT_Toggle.Value) then
+		local DragonBaronTable = DragonBaronTracker.DragonBaronTable[obj.Name]
+		if (DragonBaronTable) then
+			DragonBaronTracker.DragonBaronStatus[DragonBaronTable.IsDragon] = DragonBaronTable.IsAttacking
+			-- only baron
+			if (DragonBaronTable.IsDragon == 2 and DragonBaronTable.IsAttacking ~= 3) then
+				local time = OSClock()
+				DragonBaronTracker.BaronActiveStatus = time + 2.0
+				delay(3000, IsBaronAttacking)
+			end
+		end
+	end
 end
 
 function DragonBaronTracker.OnDraw()
+	local menu = DragonBaronTracker.Menu
+	if (menu.DBT_Toggle.Value) then
+		menu = DragonBaronTracker.Menu.DBT_Settings
+		-- Maybe I can reduce below lines later..
+		if (menu.DBT_DragonToggle.Value and DragonBaronTracker.DragonBaronStatus[1] == 1) then
+			Renderer.DrawFilledRect(
+				DragonBaronTracker.AlertRectPosition,
+				DragonBaronTracker.TextClipper,
+				2,
+				menu.DBT_DragonBGCol.Value
+			)
+			Renderer.DrawText(
+				DragonBaronTracker.AlertPosition,
+				DragonBaronTracker.TextClipper,
+				DragonBaronTracker.DragonMessage,
+				menu.DBT_DragonTextCol.Value
+			)
+		end
 
-    local drawDragon = Menu.Get("DBT.TrackDragon", true)
-    local drawBaron = Menu.Get("DBT.TrackBaron", true)
-    -- Maybe I can reduce below lines later..
-    if (drawDragon and DragonBaronTracker.DragonBaronStatus[1] == 1) then
-        local drawDragonColor = Menu.Get("DBT.TrackDragonColor", true)
-        local drawDragonBGColor = Menu.Get("DBT.TrackDragonBGColor", true)
-        Renderer.DrawFilledRect(
-            DragonBaronTracker.AlertRectPosition,
-            DragonBaronTracker.TextClipper,
-            2,
-            drawDragonBGColor
-        )
-        Renderer.DrawText(
-            DragonBaronTracker.AlertPosition,
-            DragonBaronTracker.TextClipper,
-            DragonBaronTracker.DragonMessage,
-            drawDragonColor
-        )
-    end
-
-    if (drawBaron and DragonBaronTracker.DragonBaronStatus[2] == 1) then
-        local drawBaronColor = Menu.Get("DBT.TrackBaronColor", true)
-        local drawBaronBGColor = Menu.Get("DBT.TrackBaronBGColor", true)
-        Renderer.DrawFilledRect(
-            DragonBaronTracker.BaronRectAlertPosition,
-            DragonBaronTracker.TextClipper,
-            2,
-            drawBaronBGColor
-        )
-        Renderer.DrawText(
-            DragonBaronTracker.BaronAlertPosition,
-            DragonBaronTracker.TextClipper,
-            DragonBaronTracker.BaronMessage,
-            drawBaronColor
-        )
-    end
-	
+		if (menu.DBT_BaronToggle.Value and DragonBaronTracker.DragonBaronStatus[2] == 1) then
+			Renderer.DrawFilledRect(
+				DragonBaronTracker.BaronRectAlertPosition,
+				DragonBaronTracker.TextClipper,
+				2,
+				menu.DBT_BaronBGCol.Value
+			)
+			Renderer.DrawText(
+				DragonBaronTracker.BaronAlertPosition,
+				DragonBaronTracker.TextClipper,
+				DragonBaronTracker.BaronMessage,
+				menu.DBT_BaronTextCol.Value
+			)
+		end
+	end
 end
 
 --[[
@@ -756,22 +811,21 @@ function CooldownTracker.Init()
 	CooldownTracker.SpellBoxVector = Vector(24, 3, 0)
 	CooldownTracker.SSBoxVector = Vector(30, 12, 0)
 	CooldownTracker.SummonerSpellsStructure = {
-		["SummonerBarrier"] = {Name = "Barrier", Path = "Summoners\\SummonerBarrier.png"},
-		["SummonerBoost"] = {Name = "Cleanse", Path = "Summoners\\SummonerBoost.png"},
-		["SummonerDot"] = {Name = "Ignite", Path = "Summoners\\SummonerDot.png"},
-		["SummonerExhaust"] = {Name = "Exhaust", Path = "Summoners\\SummonerExhaust.png"},
-		["SummonerFlash"] = {Name = "Flash", Path = "Summoners\\SummonerFlash.png"},
-		["SummonerFlashPerksHextechFlashtraptionV2"] = {Name = "HexFlash", Path = "Summoners\\SummonerFlashPerksHextechFlashtraptionV2.png"},
-		["SummonerHaste"] = {Name = "Ghost", Path = "Summoners\\SummonerHaste.png"},
-		["SummonerHeal"] = {Name = "Heal", Path = "Summoners\\SummonerHeal.png"},
-		["SummonerMana"] = {Name = "Clarity", Path = "Summoners\\SummonerMana.png"},
-		["SummonerSmite"] = {Name = "Smite", Path = "Summoners\\SummonerSmite.png"},
-		["S5_SummonerSmiteDuel"] = {Name = "RedSmite", Path = "Summoners\\S5_SummonerSmiteDuel.png"},
-		["S5_SummonerSmitePlayerGanker"] = {Name = "BlueSmite", Path = "Summoners\\S5_SummonerSmitePlayerGanker.png"},
-		["SummonerSnowball"] = {Name = "SnowBall", Path = "Summoners\\SummonerSnowball.png"},
-		["SummonerTeleport"] = {Name = "Teleport", Path = "Summoners\\SummonerTeleport.png"},
-		["Empty"] = {Name = "Empty", Path = "Summoners\\SummonerDarkStarChampSelect1.png"}
-		--SummonerDarkStarChampSelect1.png
+		["SummonerBarrier"] = {Name = "Barrier", Color = 0xffb833ff, CDColor = 0xbd7b00ff},
+		["SummonerBoost"] = {Name = "Cleanse", Color = 0x33ffffff, CDColor = 0x00bdbdff},
+		["SummonerDot"] = {Name = "Ignite", Color = 0xff3333ff, CDColor = 0xbd0000ff},
+		["SummonerExhaust"] = {Name = "Exhaust", Color = 0xb3b300ff, CDColor = 0x3d3d00ff},
+		["SummonerFlash"] = {Name = "Flash", Color = 0xffff33ff, CDColor = 0xbdbd00ff},
+		["SummonerFlashPerksHextechFlashtraptionV2"] = {Name = "HexFlash", Color = 0xff9ecfff, CDColor = 0xff42a1ff},
+		["SummonerHaste"] = {Name = "Ghost", Color = 0x00b3b3ff, CDColor = 0x009999ff},
+		["SummonerHeal"] = {Name = "Heal", Color = 0x00b300ff, CDColor = 0x003d00ff},
+		["SummonerMana"] = {Name = "Clarity", Color = 0x3333ffff, CDColor = 0x0000f0ff},
+		["SummonerSmite"] = {Name = "Smite", Color = 0xcead82ff, CDColor = 0xc0955dff},
+		["S5_SummonerSmiteDuel"] = {Name = "RedSmite", Color = 0xff6a00ff, CDColor = 0x8a3900ff},
+		["S5_SummonerSmitePlayerGanker"] = {Name = "BlueSmite", Color = 0xff6a00ff, CDColor = 0x8a3900ff},
+		["SummonerSnowball"] = {Name = "SnowBall", Color = 0x3333ffff, CDColor = 0x0000bdff},
+		["SummonerTeleport"] = {Name = "Teleport", Color = 0xff33ffff, CDColor = 0xbd00bdff},
+		["Empty"] = {Name = "Empty", Color = 0x999999ff, CDColor = 0x5e5e5eff}
 	}
 
 	-- 1 is to lower side adjustment
@@ -805,31 +859,39 @@ function CooldownTracker.Init()
 					IsLearned = false,
 					PctCooldown = 0.0,
 					RemainingCooldown = 0.0,
-					IsEnoughMana = false
+					IsEnoughMana = false,
+					Color = 1,
+					Color2 = 1
 				},
 				[1] = {
 					Spell = nil,
 					IsLearned = false,
 					PctCooldown = 0.0,
 					RemainingCooldown = 0.0,
-					IsEnoughMana = false
+					IsEnoughMana = false,
+					Color = 1,
+					Color2 = 1
 				},
 				[2] = {
 					Spell = nil,
 					IsLearned = false,
 					PctCooldown = 0.0,
 					RemainingCooldown = 0.0,
-					IsEnoughMana = false
+					IsEnoughMana = false,
+					Color = 1,
+					Color2 = 1
 				},
 				[3] = {
 					Spell = nil,
 					IsLearned = false,
 					PctCooldown = 0.0,
 					RemainingCooldown = 0.0,
-					IsEnoughMana = false
+					IsEnoughMana = false,
+					Color = 1,
+					Color2 = 1
 				},
-				[4] = {Spell = nil, RemainingCooldown = 0.0, Name = "Empty", SSSprite = Renderer.CreateSprite(CooldownTracker.SummonerSpellsStructure["Empty"].Path,15,15)},
-				[5] = {Spell = nil, RemainingCooldown = 0.0, Name = "Empty", SSSprite = Renderer.CreateSprite(CooldownTracker.SummonerSpellsStructure["Empty"].Path,15,15)}
+				[4] = {Spell = nil, RemainingCooldown = 0.0, Name = "Empty"},
+				[5] = {Spell = nil, RemainingCooldown = 0.0, Name = "Empty"}
 			}
 
 			for i = SpellSlots.Q, SpellSlots.Summoner2 do
@@ -840,12 +902,6 @@ function CooldownTracker.Init()
 					local ss = CooldownTracker.SummonerSpellsStructure[ssName]
 					if (ss) then
 						copySpell[i].Name = ssName
-						if ( i >= SpellSlots.Summoner1 ) then
-							local sprite = Renderer.CreateSprite(ss.Path,15,15)
-							if ( sprite ) then
-								copySpell[i].SSSprite = sprite
-							end
-						end
 					end
 				end
 			end
@@ -855,25 +911,26 @@ function CooldownTracker.Init()
 		end
 	end
 	CooldownTracker.count = CooldownTracker.count - 1
+	CooldownTracker.Menu()
 end
 
 function CooldownTracker.Menu()
-    local str = "CooldownTracker"
-    local shortName = "CDT"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".TrackMe", "Track Me", true)
-        Menu.Checkbox(shortName..".TrackAlly", "Track Ally", true)
-        Menu.Checkbox(shortName..".TrackEnemy", "Track Enemy", true)
-        Menu.Checkbox(shortName..".Adjustment", "Adjust CDTracker Position for Champions", true)
-        Menu.Text("^-> eg. Annie, Jhin, Ryze ... etc")
-    end)
+	CooldownTracker.Menu = CooldownTracker.ToggleMenu:AddMenu("CDTracker", "CooldownTracker")
+	CooldownTracker.Menu:AddMenu("CDTracker_Settings", "Cooldown Tracker Settings")
+	CooldownTracker.Menu.CDTracker_Settings:AddBool("CDTracker_TrackMe", "Track Me", true)
+	CooldownTracker.Menu.CDTracker_Settings:AddBool("CDTracker_TrackAlly", "Track Ally", true)
+	CooldownTracker.Menu.CDTracker_Settings:AddBool("CDTracker_TrackEnemy", "Track Enemy", true)
+	CooldownTracker.Menu.CDTracker_Settings:AddBool("CDTracker_Adjustment", "Adjust CDTracker Position", true)
+	CooldownTracker.Menu.CDTracker_Settings:AddLabel("CDTracker_AdjustmentLabel", "^- EX) Annie, Jhin, Zoey...", true)
+	CooldownTracker.Menu:AddBool("CDTracker_Toggle", "Activate Cooldown Tracker", true)
 end
 
 local function CDCondition(objHero)
 	if (objHero.IsValid and objHero.IsVisible and not objHero.IsDead and objHero.IsOnScreen) then
-		return (objHero.IsMe and Menu.Get("CDT.TrackMe", true)) or
-			(objHero.IsAlly and not objHero.IsMe and Menu.Get("CDT.TrackAlly", true)) or
-			(objHero.IsEnemy and Menu.Get("CDT.TrackEnemy", true))
+		local menu = CooldownTracker.Menu.CDTracker_Settings
+		return (objHero.IsMe and menu.CDTracker_TrackMe.Value) or
+			(objHero.IsAlly and not objHero.IsMe and menu.CDTracker_TrackAlly.Value) or
+			(objHero.IsEnemy and menu.CDTracker_TrackEnemy.Value)
 	end
 	return false
 end
@@ -887,21 +944,39 @@ local function CDPercentToBox(cd, tcd)
 	return result
 end
 
-function CooldownTracker.OnTick()
+-- local function CDBarColor(cd)
+-- 	if (cd <= 10) then
+-- 		return CooldownTracker.ColorList[CooldownTracker.EnumColor.AlmostReady]
+-- 	end
+-- 	return CooldownTracker.ColorList[CooldownTracker.EnumColor.OnCooldown]
+-- end
 
+-- local function IsLearned(isLearned, IsEnoughMana)
+-- 	local enum = CooldownTracker.EnumColor
+-- 	if (isLearned) then
+-- 		if ( IsEnoughMana ) then
+-- 			return CooldownTracker.ColorList[enum.NoMana]
+-- 		end
+-- 		return CooldownTracker.ColorList[enum.Ready]
+-- 	end
+-- 	return CooldownTracker.ColorList[enum.NotLearned]
+-- end
+
+function CooldownTracker.OnTick()
+	local menu = CooldownTracker.Menu
+	if (menu.CDTracker_Toggle.Value) then
 		local Heroes = CooldownTracker.Heroes
 		local maxHeroes = CooldownTracker.count
 		local enum = CooldownTracker.EnumColor
-		local copySpell, cd, tcd, mana, t_spell
 		for h = 1, maxHeroes do
 			local objHero = Heroes[h][2].AsHero
 			if (CDCondition(objHero)) then
 				for i = SpellSlots.Q, SpellSlots.R do
-					copySpell = Heroes[h][1]
+					local copySpell = Heroes[h][1]
 					if (copySpell[i].Spell.IsLearned) then
 						copySpell[i].IsLearned = true
-						cd = copySpell[i].Spell.RemainingCooldown
-						tcd = copySpell[i].Spell.TotalCooldown
+						local cd = copySpell[i].Spell.RemainingCooldown
+						local tcd = copySpell[i].Spell.TotalCooldown
 						copySpell[i].RemainingCooldown = cd
 						copySpell[i].PctCooldown = CDPercentToBox(cd, tcd)
 
@@ -914,7 +989,7 @@ function CooldownTracker.OnTick()
 							end
 						else
 							copySpell[i].Color = enum.Ready
-							mana = objHero.Mana - copySpell[i].Spell.ManaCost
+							local mana = objHero.Mana - copySpell[i].Spell.ManaCost
 							if (mana < 0) then
 								copySpell[i].IsEnoughMana = false
 								copySpell[i].Color = enum.NoMana
@@ -930,41 +1005,28 @@ function CooldownTracker.OnTick()
 				end
 
 				for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
-					copySpell = Heroes[h][1]
-					t_spell = objHero:GetSpell(i)
+					local copySpell = Heroes[h][1]
+					local objHero = Heroes[h][2]
+					local t_spell = objHero:GetSpell(i)
 					if (t_spell) then
 						copySpell[i].Spell = t_spell
-						cd = t_spell.RemainingCooldown
+						local cd = t_spell.RemainingCooldown
 						copySpell[i].RemainingCooldown = cd
-						if ( cd > 0 ) then
-							-- Darker
-							copySpell[i].SSSprite:SetColor(0x848484ff)
-						else
-							-- Restore original color
-							copySpell[i].SSSprite:SetColor(0xffffffff)
-						end
 						local ssName = t_spell.Name
-						if( copySpell[i].Name ~= ssName ) then
-							local ss = CooldownTracker.SummonerSpellsStructure[ssName]
-							if (ss) then
-								copySpell[i].Name = ssName
-								local sprite = Renderer.CreateSprite(ss.Path,15,15)
-								if ( sprite ) then
-									copySpell[i].SSSprite = sprite
-								end
-							end
+						local ss = CooldownTracker.SummonerSpellsStructure[ssName]
+						if (ss) then
+							copySpell[i].Name = ssName
 						end
 					end
 					Heroes[h][1] = copySpell
 				end
 			end
 		end
-	
+	end
 end
 
 function CooldownTracker.ShouldHPPosAdjusted(adjustment, hpPos, isVerticalAdjustment)
-    local adjustmentBool = Menu.Get("CDT.Adjustment", true)
-	if (adjustmentBool) then
+	if (CooldownTracker.Menu.CDTracker_Settings.CDTracker_Adjustment.Value) then
 		local adjustType = adjustment[1]
 		if ((adjustType == 1 and isVerticalAdjustment) or (adjustType == 2 and not isVerticalAdjustment)) then
 			return hpPos + adjustment[2]
@@ -974,10 +1036,13 @@ function CooldownTracker.ShouldHPPosAdjusted(adjustment, hpPos, isVerticalAdjust
 end
 
 function CooldownTracker.OnDraw()
-
+	local menu = CooldownTracker.Menu
+	if (menu.CDTracker_Toggle.Value) then
 		local Heroes = CooldownTracker.Heroes
+		local boxOutLine = CooldownTracker.BoxOutline
 		local SpellBackground = CooldownTracker.SpellBackground
 		local spellBox = CooldownTracker.SpellBoxVector
+		local ssBox = CooldownTracker.SSBoxVector
 		local colorList = CooldownTracker.ColorList
 
 		for h = 1, CooldownTracker.count do
@@ -986,14 +1051,15 @@ function CooldownTracker.OnDraw()
 			if (cond) then
 				local adjustment = Heroes[h][3]
 				local originalHpPos = objHero.HealthBarScreenPos
-                local hpPos = CooldownTracker.ShouldHPPosAdjusted(adjustment, originalHpPos, true)
-				local copySpell, pos, remainCD, sprite
+				local hpPos = CooldownTracker.ShouldHPPosAdjusted(adjustment, originalHpPos, true)
 				-- Grey box for Q to R spells
 				Renderer.DrawFilledRect(Vector(hpPos.x - 48, hpPos.y - 3, 0), SpellBackground, 2, CooldownTracker.BoxOutline)
 				for i = SpellSlots.Q, SpellSlots.R do
-					copySpell = Heroes[h][1]
-					pos = Vector(hpPos.x + 27 * i - 45, hpPos.y - 1, 0)
-					remainCD = copySpell[i].RemainingCooldown
+					local copySpell = Heroes[h][1]
+
+					local pos = Vector(hpPos.x + 27 * i - 45, hpPos.y - 1, 0)
+
+					local remainCD = copySpell[i].RemainingCooldown
 					if (remainCD > 0) then
 						Renderer.DrawFilledRect(pos, spellBox, 1, colorList[CooldownTracker.EnumColor.NotLearned])
 						-- Got from 48656c6c636174
@@ -1010,29 +1076,33 @@ function CooldownTracker.OnDraw()
 					end
 				end
 
-				hpPos = CooldownTracker.ShouldHPPosAdjusted(adjustment, originalHpPos, false) + Vector(64, -42, 0)
+				hpPos = CooldownTracker.ShouldHPPosAdjusted(adjustment, originalHpPos, false) + Vector(65, -40, 0)
 				for i = SpellSlots.Summoner1, SpellSlots.Summoner2 do
-					copySpell = Heroes[h][1]
-					hpPos.y = hpPos.y + 16
+					local copySpell = Heroes[h][1]
+					hpPos.y = hpPos.y + 13
 					if (copySpell) then
-						pos = Vector(hpPos.x + 17, hpPos.y, 0)
-						sprite = copySpell[i].SSSprite
-						if ( sprite ) then
-							sprite:Draw( hpPos , nil, false)
-						end
+						local posText = Vector(hpPos.x + 5, hpPos.y, 0)
+						local spellName = copySpell[i].Name
+						local ssStruct = CooldownTracker.SummonerSpellsStructure[spellName]
+						local spellColor = ssStruct.Color
 						if (copySpell[i].RemainingCooldown > 0) then
+							spellColor = ssStruct.CDColor
+							Renderer.DrawFilledRect(hpPos, ssBox, 2, spellColor)
 							Renderer.DrawText(
-								pos,
+								posText,
 								TextClipper,
 								format(CooldownTracker.StringFormat, copySpell[i].RemainingCooldown),
-								CooldownTracker.TextColor
+								CooldownTracker.TextColorBlack
 							)
+						else
+							Renderer.DrawFilledRect(hpPos, ssBox, 2, spellColor)
 						end
 					end
+					Renderer.DrawRectOutline(hpPos, ssBox, 2, 2, boxOutLine)
 				end
 			end
 		end
-	
+	end
 end
 
 --[[
@@ -1153,64 +1223,69 @@ function Activator.Init()
 			Menu = {}
 		}
 	}
+	Activator.Menu()
 end
 
 function Activator.Menu()
-	    
-    local str = "Activator"
-	local shortName = "AT"
-	local offensive = "Offensive"
-	Menu.NewTree(str, str, function ()
-		Menu.NewTree(offensive, offensive, function ()
-			for k, v in pairs(Activator.Offensive) do
-				local menu = shortName.."."..v.MenuName
-				Menu.NewTree(v.MenuName, v.Name, function ()
-					Menu.Slider(menu..".EnemyHealth", "Enemy Min Health %", v.EnemyHealth, 0, 100, 1)
-					Menu.Slider(menu..".MyHealth", "My Min Health %", v.MyHealth, 0, 100, 1)
-					if ( k == itemID.Tiamat or k == itemID.RavenousHydra ) then
-						Menu.Checkbox(menu..".FarmToggle", "Use " .. v.Name .. " on Unkilliable Minions during Farming", true)
-					end
-					Menu.Checkbox(menu..".Active", "Active " .. v.Name, true)
-				end)
-			end
-		end)
-        Menu.Checkbox(shortName..".FocusedOnly", "Use items on Focused Target ONLY", false)
-    end)
+	Activator.Menu = Activator.ToggleMenu:AddMenu("Activator", "Activator")
+	TS = _G.Libs.TargetSelector(Activator.Menu)
+	Activator.Menu:AddMenu("Offensive", "Offensive")
+	for k, v in pairs(Activator.Offensive) do
+		local menuName = v.MenuName
+		Activator.Menu.Offensive:AddMenu(menuName, v.Name)
+		v.Menu.EnemyHealth =
+			Activator.Menu.Offensive[menuName]:AddSlider(menuName .. "EnemyHealth", "Enemy Health %", 0, 100, 1, v.EnemyHealth)
+		v.Menu.MyHealth =
+			Activator.Menu.Offensive[menuName]:AddSlider(menuName .. "MyHealth", "My Health %", 0, 100, 1, v.MyHealth)
+		v.Menu.Active = Activator.Menu.Offensive[menuName]:AddBool(menuName .. "_Toggle", "Active " .. v.Name, true)
+	end
+
+	local mName = Activator.Offensive[itemID.Tiamat].MenuName
+	Activator.Offensive[itemID.Tiamat].Menu.FarmActive =
+		Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Tiamet during Farming", true)
+	mName = Activator.Offensive[itemID.RavenousHydra].MenuName
+	Activator.Offensive[itemID.RavenousHydra].Menu.FarmActive =
+		Activator.Menu.Offensive[mName]:AddBool(mName .. "_FarmToggle", "Use Hydra during Farming", true)
+
+	Activator.Menu.Offensive:AddBool("FocusedOnly", "Use items on Focused Target ONLY", true)
+	Activator.Menu.Offensive:AddBool("ATOF_Toggle", "Use Offensive Items", true)
 end
 
 local function FocusedCondition(Range)
 	local focusedT = TS:GetForcedTarget()
-	local toggle = Menu.Get("AT.FocusedOnly", true)
+	local toggle = Activator.Menu.Offensive.FocusedOnly.Value
 	local target = TS:GetTarget(Range)
 	return (toggle and ((focusedT and focusedT == target) or (focusedT == nil))) or not toggle
 end
 
 function Activator.OnTick()
-
-	if (Orbwalker.GetMode() == Activator.EnumMode[1]) then
-		local target = TS:GetTarget(1000)
-		if (target == nil) then
-			return
-		end
-		for k, v in pairs(Player.Items) do
-			local itemslot = k + 6
-			local item = Activator.Offensive[v.ItemId]
-			if (item and Menu.Get("AT.".. item.MenuName..".Active", true) and Player:GetSpellState(itemslot) == SpellStates.Ready) then
-				target = TS:GetTarget(item.Range)
-				local focusedCond = FocusedCondition(item.Range)
-				if (target and focusedCond) then
-					if
-						(Player.HealthPercent <= Menu.Get("AT.".. item.MenuName..".MyHealth", true) * 0.01 or
-							target.HealthPercent <= Menu.Get("AT.".. item.MenuName..".EnemyHealth", true) * 0.01)
-						then
-						if (item.Type == Activator.EnumOffensiveType.Targeted) then
-							Input.Cast(itemslot, target)
-						elseif (item.Type == Activator.EnumOffensiveType.Active) then
-							Input.Cast(itemslot)
-						elseif (item.Type == Activator.EnumOffensiveType.NonTargeted) then
-							local prediction = Prediction.GetPredictedPosition(target, item.PredictionInput, Player.Position)
-							if prediction.HitChanceEnum >= HitChance.Medium then
-								Input.Cast(itemslot, prediction.CastPosition)
+	local menu = Activator.Menu.Offensive
+	if (menu.ATOF_Toggle.Value) then
+		if (Orbwalker.GetMode() == Activator.EnumMode[1]) then
+			local target = TS:GetTarget(1000)
+			if (target == nil) then
+				return
+			end
+			for k, v in pairs(Player.Items) do
+				local itemslot = k + 6
+				local item = Activator.Offensive[v.ItemId]
+				if (item and item.Menu.Active.Value and Player:GetSpellState(itemslot) == SpellStates.Ready) then
+					target = TS:GetTarget(item.Range)
+					local focusedCond = FocusedCondition(item.Range)
+					if (target and focusedCond) then
+						if
+							(Player.HealthPercent <= item.Menu.MyHealth.Value * 0.01 or
+								target.HealthPercent <= item.Menu.EnemyHealth.Value * 0.01)
+						 then
+							if (item.Type == Activator.EnumOffensiveType.Targeted) then
+								Input.Cast(itemslot, target)
+							elseif (item.Type == Activator.EnumOffensiveType.Active) then
+								Input.Cast(itemslot)
+							elseif (item.Type == Activator.EnumOffensiveType.NonTargeted) then
+								local prediction = Prediction.GetPredictedPosition(target, item.PredictionInput, Player.Position)
+								if prediction.HitChanceEnum >= HitChance.Medium then
+									Input.Cast(itemslot, prediction.CastPosition)
+								end
 							end
 						end
 					end
@@ -1218,29 +1293,43 @@ function Activator.OnTick()
 			end
 		end
 	end
-	
 end
 
 local function IsTiamentOrHydra(_ItemID)
 	local temp = {[itemID.Tiamat] = true, [itemID.RavenousHydra] = true}
-	return (temp[_ItemID] and Menu.Get("AT.".. Activator.Offensive[_ItemID].MenuName..".FarmActive", true))
+	return (temp[_ItemID] and Activator.Offensive[_ItemID].Menu.FarmActive.Value)
 end
 
 function Activator.OnUnkillableMinion(minion)
-	if (minion:Distance(Player) <= Activator.Offensive[itemID.Tiamat].Range) then
-		for k, v in pairs(Player.Items) do
-			local itemslot = k + 6
-			local cond = IsTiamentOrHydra(v.ItemId)
-			if (cond) then
-				local item = Activator.Offensive[v.ItemId]
-				if (item and item.Menu.Active.Value and Player:GetSpellState(itemslot) == SpellStates.Ready) then
-					Input.Cast(itemslot, minion)
+	local menu = Activator.Menu.Offensive
+	if (menu.ATOF_Toggle.Value) then
+		if (minion:Distance(Player) <= Activator.Offensive[itemID.Tiamat].Range) then
+			for k, v in pairs(Player.Items) do
+				local itemslot = k + 6
+				local cond = IsTiamentOrHydra(v.ItemId)
+				if (cond) then
+					local item = Activator.Offensive[v.ItemId]
+					if (item and item.Menu.Active.Value and Player:GetSpellState(itemslot) == SpellStates.Ready) then
+						Input.Cast(itemslot, minion)
+					end
 				end
 			end
 		end
 	end
 end
 
+local function IsTeam(IsAlly, this, MenuType)
+	return (this.Menu[MenuType .. "_Toggle"].Value) and
+		((IsAlly and this.Menu[MenuType .. "_Ally"].Value) or (not IsAlly and this.Menu[MenuType .. "_Enemy"].Value))
+end
+
+local function TeamColor(isAlly, this, menuType)
+	if (isAlly) then
+		return this.Menu[menuType .. "_AllyColor"].Value
+	else
+		return this.Menu[menuType .. "_EnemyColor"].Value
+	end
+end
 
 --[[
 	████████ ██    ██ ██████  ███    ██  █████  ██████   ██████  ██    ██ ███    ██ ██████  
@@ -1282,20 +1371,17 @@ function TurnAround.Init()
 		TurnAround.SpellData = nil
 		TurnAround.TurnAroundActive = nil
 	end
+	TurnAround.Menu()
 end
 
 function TurnAround.Menu()
-    local str = "TurnAround"
-    local shortName = "TA"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".Use", "Use TurnAround", true)
-        Menu.Text("^-> Cassiopeia/Tryndamere Supported")
-    end)
-
+	TurnAround.Menu = TurnAround.ToggleMenu:AddMenu("TA_Menu", "TurnAround")
+	TurnAround.Menu:AddBool("TA_Toggle", "Activate TurnAround", true)
+	TurnAround.Menu:AddLabel("TA_Label", "Cassiopeia/Tryndamere Supported", true)
 end
 
 function TurnAround.OnIssueOrder(Args)
-	if (Args and Menu.Get("TA.Use", true)) then
+	if (Args and TurnAround.Menu["TA_Toggle"].Value) then
 		TurnAround.OriginalPath = Args.Position
 		if (TurnAround.LimitIssueOrder > OSClock()) then
 			Args.Process = false
@@ -1304,7 +1390,7 @@ function TurnAround.OnIssueOrder(Args)
 end
 
 function TurnAround.OnProcessSpell(obj, spellcast)
-	if (Menu.Get("TA.Use", true)) then
+	if (TurnAround.Menu["TA_Toggle"].Value) then
 		local objHero = obj.AsHero
 		local cond = TurnAround.TurnAroundActive and obj and objHero and Player.IsAlive and objHero.IsEnemy
 		if (cond) then
@@ -1339,19 +1425,16 @@ end
 -- Thanks to Thron. All credits go to him.
 function TowerRanges.Init()
 	TowerRanges.FountainTurrets = {["Turret_OrderTurretShrine_A"] = 1350, ["Turret_ChaosTurretShrine_A"] = 1350}
+	TowerRanges.Menu()
 end
 
 function TowerRanges.Menu()
-    
-    local str = "TowerRanges"
-    local shortName = "TR"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".Enemy", "Track Enemy Towers", true)
-        Menu.ColorPicker(shortName..".EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
-        Menu.Checkbox(shortName..".Ally", "Track Ally Towers", true)
-        Menu.ColorPicker(shortName..".AllyColor", "Ally Tower Range Color", 0x00FF00FF)
-    end)
-
+	TowerRanges.Menu = TowerRanges.ToggleMenu:AddMenu("TR_Menu", "TowerRanges")
+	TowerRanges.Menu:AddBool("TR_Enemy", "Track Enemy Towers", true)
+	TowerRanges.Menu:AddRGBAMenu("TR_EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
+	TowerRanges.Menu:AddBool("TR_Ally", "Track Ally Towers", true)
+	TowerRanges.Menu:AddRGBAMenu("TR_AllyColor", "Ally Tower Range Color", 0x00FF00FF)
+	TowerRanges.Menu:AddBool("TR_Toggle", "Activate Tower Ranges", true)
 end
 
 function TowerRanges.DrawRangesForTeam(team_lbl, color)
@@ -1367,19 +1450,15 @@ function TowerRanges.DrawRangesForTeam(team_lbl, color)
 end
 
 function TowerRanges.OnDraw()
+	if TowerRanges.Menu.TR_Toggle.Value then
+		if TowerRanges.Menu.TR_Ally.Value then
+			TowerRanges.DrawRangesForTeam("ally", TowerRanges.Menu.TR_AllyColor.Value)
+		end
 
-    local enemyTower = Menu.Get("TR.Enemy", true)
-    local allyTower = Menu.Get("TR.Ally", true)
-    if allyTower then
-        local allyTowerColor = Menu.Get("TR.AllyColor", true)
-        TowerRanges.DrawRangesForTeam("ally", allyTowerColor)
-    end
-
-    if enemyTower then
-        local enemyTowerColor = Menu.Get("TR.EnemyColor", true)
-        TowerRanges.DrawRangesForTeam("enemy", enemyTowerColor)
-    end
-	
+		if TowerRanges.Menu.TR_Enemy.Value then
+			TowerRanges.DrawRangesForTeam("enemy", TowerRanges.Menu.TR_EnemyColor.Value)
+		end
+	end
 end
 
 --[[
@@ -1394,44 +1473,31 @@ function PathTracker.Init()
 	PathTracker.DrawBox = Vector(15, 15, 0)
 	PathTracker.TextClipper = Vector(55, 15, 0)
 	PathTracker.HandleList = {}
-
-	local smiteNames = { ["S5_SummonerSmiteDuel"] = true , ["S5_SummonerSmitePlayerGanker"] = true , ["SummonerSmite"] = true}
 	local handleCount = 0
 	local heroList = ObjManager.Get("all", "heroes")
 	for handle, hero in pairs(heroList) do
 		if (hero) then
 			local ObjHero = hero.AsHero
-			local isJungler = false
-			local ss1 = ObjHero:GetSpell(Enums.SpellSlots.Summoner1)
-			local ss2 = ObjHero:GetSpell(Enums.SpellSlots.Summoner2)
-			if ( ss1 and ss2 ) then
-				if( smiteNames[ss1.Name] or smiteNames[ss2.Name]) then
-					isJungler = true
-				end
-			end
-			PathTracker.HeroList[handle] = {Hero = ObjHero, Pathing = nil, ETA = 0, IsJungler = isJungler}
+			PathTracker.HeroList[handle] = {Hero = ObjHero, Pathing = nil, ETA = 0}
 			handleCount = handleCount + 1
 			PathTracker.HandleList[handleCount] = handle
 		end
 	end
+	PathTracker.Menu()
 end
 
 function PathTracker.Menu()
-    local str = "PathTracker"
-    local shortName = "PT"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".Enemy", "Track Enemy PAth", true)
-        Menu.ColorPicker(shortName..".EnemyColor", "Enemy Path Color", 0xDF0101FF)
-        Menu.Checkbox(shortName..".Ally", "Track Ally Path", true)
-        Menu.ColorPicker(shortName..".AllyColor", "Ally Path Color", 0x008000FF)
-        Menu.Checkbox(shortName..".Waypoints", "Track Waypoints", true)
-        Menu.ColorPicker(shortName..".WaypointsColor", "Waypoints Color", 0xFFFF00FF)
-        Menu.Checkbox(shortName..".ETA", "Show Estimated Arrival Time", true)
-        Menu.Checkbox(shortName..".CharName", "Show Champion Name", true)
-		Menu.ColorPicker(shortName..".ETAnNameColor", "ETA/ChampName Color", 0xFFFFFFFF)
-		Menu.Checkbox(shortName..".OnlyJungler", "Track Only Junglers' Path", false)
-        
-    end)
+	PathTracker.Menu = PathTracker.ToggleMenu:AddMenu("PT_Menu", "PathTracker")
+	PathTracker.Menu:AddBool("PT_Enemy", "Track Enemy", true)
+	PathTracker.Menu:AddBool("PT_Ally", "Track Ally", false)
+	PathTracker.Menu:AddBool("PT_Waypoints", "Track Waypoints", true)
+	PathTracker.Menu:AddRGBAMenu("PT_WaypointsColor", "WayPoints Color", 0xFFFF00FF)
+	PathTracker.Menu:AddBool("PT_ETA", "Show Estimated Arrival Time", true)
+	PathTracker.Menu:AddBool("PT_CharName", "Show Champion Name", true)
+	PathTracker.Menu:AddRGBAMenu("PT_ETAColor", "ETA/Champ Name Color", 0xFFFFFFFF)
+	PathTracker.Menu:AddRGBAMenu("PT_AllyColor", "ETA Ally Background Color", 0x008000FF)
+	PathTracker.Menu:AddRGBAMenu("PT_EnemyColor", "ETA Enemy Background Color", 0xDF0101FF)
+	PathTracker.Menu:AddBool("PT_Toggle", "Activate Path Tracker", true)
 end
 
 local function CalculateETA(dis, MoveSpeed)
@@ -1442,60 +1508,49 @@ local function ETAToSeconds(Seconds)
 	return format("%02.f", floor(Seconds))
 end
 
-local function IsTeam(IsAlly, this, MenuType)
-	return ((IsAlly and Menu.Get(MenuType..".Ally", true)) or (not IsAlly and Menu.Get(MenuType..".Enemy", true)))
-end
-
-local function TeamColor(isAlly, this, menuType)
-    local str = "AllyColor"
-	if (not isAlly) then
-		str = "EnemyColor"
-    end
-    
-    return Menu.Get(menuType.."."..str, true)
-end
-
-
 -- Thanks to Thron
 function PathTracker.OnDraw()
+	if not (PathTracker.Menu["PT_Toggle"].Value) then
+		return
+	end
+
 	local IsOnScreen = Renderer.IsOnScreen
-	local drawETA = Menu.Get("PT.ETA", true)
-	local drawCharName = Menu.Get("PT.CharName", true)
-	local drawColor = Menu.Get("PT.ETAnNameColor", true)
-	local onlyJungler = Menu.Get("PT.OnlyJungler", true)
+
+	local drawETA = PathTracker.Menu.PT_ETA.Value
+	local drawCharName = PathTracker.Menu.PT_CharName.Value
+	local drawColor = PathTracker.Menu.PT_ETAColor.Value
+	local textClipper = PathTracker.TextClipper
 
 	for i, entry in ipairs(PathTracker.HandleList) do
 		local value = PathTracker.HeroList[entry]
-		if ( (onlyJungler and value.IsJungler) or not onlyJungler) then
-			local hero, pathing, endTime = value.Hero.AsHero, value.Pathing, value.ETA
-			if (pathing and pathing.IsMoving and not hero.IsDead) then
-				local vEndPos = pathing.EndPos
-				local waypoints = pathing.Waypoints
-				local curWP = pathing.CurrentWaypoint
-				for i = curWP, #waypoints - 1 do
-					local endPos = waypoints[i + 1]
-					if (IsOnScreen(endPos)) then
-						local startPos = (i == curWP and hero.Position) or waypoints[i]
-						Renderer.DrawLine3D(startPos, endPos, 1, 0xFFFF00FF)
-					end
+		local hero, pathing, endTime = value.Hero.AsHero, value.Pathing, value.ETA
+		if (pathing and pathing.IsMoving and not hero.IsDead) then
+			local vEndPos = pathing.EndPos
+			local waypoints = pathing.Waypoints
+			local curWP = pathing.CurrentWaypoint
+			for i = curWP, #waypoints - 1 do
+				local endPos = waypoints[i + 1]
+				if (IsOnScreen(endPos)) then
+					local startPos = (i == curWP and hero.Position) or waypoints[i]
+					Renderer.DrawLine3D(startPos, endPos, 1, 0xFFFF00FF)
+				end
+			end
+
+			if (IsOnScreen(vEndPos)) then
+				if drawCharName then
+					local drawName = Renderer.WorldToScreen(Vector(vEndPos.x - 30, vEndPos.y, vEndPos.z))
+					Renderer.DrawText(drawName, textClipper, hero.CharName, drawColor)
 				end
 
-				if (IsOnScreen(vEndPos)) then
-					if drawCharName then
-						local drawName = Renderer.WorldToScreen(Vector(vEndPos.x - 30, vEndPos.y, vEndPos.z))
-						Renderer.DrawText(drawName, TextClipperLarger, hero.CharName, drawColor)
-					end
-
-					if drawETA then
-						local drawTime = Renderer.WorldToScreen(Vector(vEndPos.x - 10, vEndPos.y - 35, vEndPos.z))
-						Renderer.DrawFilledRect(drawTime, PathTracker.DrawBox, 2, TeamColor(hero.IsAlly, PathTracker, "PT"))
-						local time = endTime - OSClock()
-						if (time < 0) then
-							value.Pathing = nil
-							value.ETA = 0
-						else
-							Renderer.DrawText(drawTime, TextClipperLarger, ETAToSeconds(time), drawColor)
-						end
+				if drawETA then
+					local drawTime = Renderer.WorldToScreen(Vector(vEndPos.x - 10, vEndPos.y - 35, vEndPos.z))
+					Renderer.DrawFilledRect(drawTime, PathTracker.DrawBox, 2, TeamColor(hero.IsAlly, PathTracker, "PT"))
+					local time = endTime - OSClock()
+					if (time < 0) then
+						value.Pathing = nil
+						value.ETA = 0
+					else
+						Renderer.DrawText(drawTime, textClipper, ETAToSeconds(time), drawColor)
 					end
 				end
 			end
@@ -1504,17 +1559,17 @@ function PathTracker.OnDraw()
 end
 
 function PathTracker.OnNewPath(obj, pathing)
-
+	if not (PathTracker.Menu["PT_Toggle"].Value) then
+		return
+	end
 	local cond = obj and obj.IsHero and obj.IsVisible and not obj.IsMe and (IsTeam(obj.IsAlly, PathTracker, "PT"))
 	if (cond) then
 		local Handle = obj.Handle
 		if (Handle) then
 			local enemy = PathTracker.HeroList[Handle]
-			local onlyJungler = Menu.Get("PT.OnlyJungler", true)
-			if (enemy and ((onlyJungler and enemy.IsJungler) or not onlyJungler)) then
-                PathTracker.HeroList[Handle].Pathing = pathing
-                local eta = Menu.Get("PT.ETA", true)
-				if (eta) then
+			if (enemy) then
+				PathTracker.HeroList[Handle].Pathing = pathing
+				if (PathTracker.Menu.PT_ETA.Value) then
 					local waypoints = pathing.Waypoints
 					local ETA = 0.0
 					local movespeed = obj.MoveSpeed
@@ -1549,17 +1604,13 @@ function BlockMinion.Init()
 	BlockMinion.FindingMsg = "Fidning a Minion.."
 	BlockMinion.TextClipper = Vector(150, 15, 0)
 	BlockMinion.LocalTick = 0
+	BlockMinion.Menu()
 end
 
 function BlockMinion.Menu()
-
-    local str = "BlockMinion"
-    local shortName = "BM"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".Use", "Use Block Minion", true)
-        Menu.Keybind(shortName..".Key", "Blocking Key", string.byte('Z'), false, false)
-    end)
-
+	BlockMinion.Menu = BlockMinion.ToggleMenu:AddMenu("BM_Menu", "BlockMinion")
+	BlockMinion.Menu:AddBool("BM_Toggle", "Activate Block Minion", true)
+	BlockMinion.Menu:AddKeyBind("BM_Key", "Blocking Key", 90) -- 90 is Z
 end
 
 local function TurnOffBlockMinion()
@@ -1568,13 +1619,13 @@ local function TurnOffBlockMinion()
 end
 
 local function BlockCondition()
-    local useBlock = Menu.Get("BM.Use", true)
-    local blockKey = Menu.Get("BM.Key", true)
-	if (useBlock and not blockKey) then
+	local toggle = BlockMinion.Menu.BM_Toggle.Value
+	local key = BlockMinion.Menu.BM_Key.Value
+	if (toggle and not key) then
 		TurnOffBlockMinion()
 		return false
 	end
-	return (useBlock and blockKey)
+	return (toggle and key)
 end
 
 local function GetTheClosetMinion()
@@ -1637,8 +1688,7 @@ function BlockMinion.OnUpdate()
 end
 
 function BlockMinion.OnDraw()
-    local blockKey = Menu.Get("BM.Key", true)
-	if (blockKey) then
+	if (BlockMinion.Menu.BM_Key.Value) then
 		local cond = BlockCondition()
 		BlockMinion.ToggleCondition = cond
 		if (cond) then
@@ -1686,21 +1736,18 @@ function SSUtility.Init()
 		SSUtility.Slot = nil
 		SSUtility.Ingite = nil
 	end
+	SSUtility.Menu()
 end
 
 function SSUtility.Menu()
-    local str = "SSUtility"
-    local shortName = "SU"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".ExtendedFlash", "Use Extended Flash", true)
-        Menu.Checkbox(shortName..".Ignite", "Block Flash 1", true)
-        Menu.Text("^- If you die from Ignite", false)
-        Menu.Checkbox(shortName..".OverWall", "Block Flash 2", true)
-        Menu.Text("^- If you can't flash over the wall", false)
-        Menu.Checkbox(shortName..".NearTP", "Block TP", true)
-        Menu.Text("^- If you tp to a too close location", false)
-    end)
-
+	SSUtility.Menu = SSUtility.ToggleMenu:AddMenu("SU_Menu", "SSUtility")
+	SSUtility.Menu:AddBool("SU_Ignite", "Block Flash 1", true)
+	SSUtility.Menu:AddLabel("SU_IgniteLabel", "^- If you die from Ignite")
+	SSUtility.Menu:AddBool("SU_OverWall", "Block Flash 2", true)
+	SSUtility.Menu:AddLabel("SU_OverWallLabel", "^- If you can't flash over the wall")
+	SSUtility.Menu:AddBool("SU_ExtendedFlash", "Use Extended Flash", true)
+	SSUtility.Menu:AddBool("SU_NearTP", "Block TP", true)
+	SSUtility.Menu:AddLabel("SU_NearTPLabel", "^- If you tp too close location")
 end
 
 local function GetIgniteDmg(duration, level)
@@ -1734,15 +1781,12 @@ local function GetClosestNonWall(position)
 end
 
 function SSUtility.OnCastSpell(Args)
-
+	local menu = SSUtility.Menu
 	local slot = SSUtility.Slot
-    local extendedFlash = Menu.Get("SU.ExtendedFlash", true)
-    local flashIgnite = Menu.Get("SU.Ignite", true)
-    local flashOverwall = Menu.Get("SU.OverWall", true)
-    local nearTP = Menu.Get("SU.NearTP", true)
+
 	-- flash
 	if (Args.Slot == slot[1]) then
-		if (flashIgnite) then
+		if (menu.SU_Ignite.Value) then
 			local buff = Player:GetBuff(SSUtility.Ingite)
 			if (buff) then
 				local dmg = GetIgniteDmg(buff.DurationLeft, buff.Source.AsHero.Level)
@@ -1752,7 +1796,7 @@ function SSUtility.OnCastSpell(Args)
 			end
 		end
 
-		if (flashOverwall) then
+		if (menu.SU_OverWall.Value) then
 			local mousePos = Renderer.GetMousePos()
 			local IsWall = Player.Position:Extended(mousePos, 450)
 			if (Nav.IsWall(IsWall)) then
@@ -1766,7 +1810,7 @@ function SSUtility.OnCastSpell(Args)
 			end
 		end
 
-		if (extendedFlash) then
+		if (menu.SU_ExtendedFlash.Value) then
 			local distance = Player:Distance(Args.TargetEndPosition)
 			if (distance < 400) then
 				local extended = Player.Position:Extended(Args.TargetEndPosition, 450)
@@ -1778,7 +1822,7 @@ function SSUtility.OnCastSpell(Args)
 
 	-- tp
 	if (Args.Slot == slot[2]) then
-		if (nearTP) then
+		if (menu.SU_NearTP.Value) then
 			local distance = Player:Distance(Args.TargetEndPosition)
 			if (distance < 550) then
 				Args.Process = false
@@ -1820,20 +1864,16 @@ function RecallTracker.Init()
 	RecallTracker.IsDragging = false
 	RecallTracker.BoxSize = Vector(200, 18, 0)
 	RecallTracker.TestText = " CHAMPION "
+	RecallTracker.Menu()
 end
 
 function RecallTracker.Menu()
-
-    local str = "RecallTracker"
-    local shortName = "RT"
-    Menu.NewTree(str, str, function ()
-        -- 16 is Left Shift
-        Menu.Keybind(shortName..".Key", "Adjust Key (Default: Shift)", 16, false, false)
-        Menu.Checkbox(shortName..".AdjustToggle", "Adjust Position", true)
-        Menu.Slider(shortName..".AdjustX", "Adjust X", 0, -1500, 1000, 10)
-        Menu.Slider(shortName..".AdjustY", "Adjust Y", 0, -1500, 1000, 10)
-    end)
-
+	RecallTracker.Menu = RecallTracker.ToggleMenu:AddMenu("RT_Menu", "RecallTracker")
+	RecallTracker.Menu:AddBool("RT_Toggle", "Activate Recall Tracker", true)
+	RecallTracker.Menu:AddKeyBind("RT_Key", "Adjust Key (Default: Shift)", 16) -- 16 is Left Shift
+	RecallTracker.Menu:AddBool("RT_AdjustToggle", "Adjust Position", true)
+	RecallTracker.Menu:AddSlider("RT_AdjustX", "Adjust X", -1500, 1000, 10, 0)
+	RecallTracker.Menu:AddSlider("RT_AdjustY", "Adjust Y", -1500, 1000, 10, 0)
 end
 
 local function DecodeRecallStatus(status, name)
@@ -1854,25 +1894,22 @@ local function DecodeRecallStatus(status, name)
 end
 
 function RecallTracker.OnDraw()
-    local adjustKey = Menu.Get("RT.Key", true)
-    local adjustToggle = Menu.Get("RT.AdjustToggle", true)
-    local adjustX = Menu.Get("RT.AdjustX", true)
-    local adjustY = Menu.Get("RT.AdjustY", true)
+	if (RecallTracker.Menu.RT_Toggle.Value) then
 		if (RecallTracker.IsDragging) then
 			local mousePos = Renderer.GetCursorPos()
 			local x_diff = mousePos.x - RecallTracker.DefaultLocation.x
 			local y_diff = mousePos.y - RecallTracker.DefaultLocation.y
-			adjustX = x_diff
-			adjustY = y_diff
+			RecallTracker.Menu.RT_AdjustX.Value = x_diff
+			RecallTracker.Menu.RT_AdjustY.Value = y_diff
 		end
 
 		local drawLocation
 		-- test drawing
-		if (adjustKey) then
+		if (RecallTracker.Menu.RT_Key.Value) then
 			drawLocation =
 				Vector(
-				RecallTracker.DefaultLocation.x + adjustX,
-				RecallTracker.DefaultLocation.y + adjustY,
+				RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
+				RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
 				0
 			)
 			local boxSize = RecallTracker.BoxSize
@@ -1887,8 +1924,8 @@ function RecallTracker.OnDraw()
 		else
 			drawLocation =
 				Vector(
-				RecallTracker.DefaultLocation.x + adjustX,
-				RecallTracker.DefaultLocation.y + adjustY,
+				RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
+				RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
 				0
 			)
 			local boxSize = RecallTracker.BoxSize
@@ -1919,7 +1956,7 @@ function RecallTracker.OnDraw()
 				end
 			end
 		end
-	
+	end
 end
 
 local function GetRecallStatus(status)
@@ -1939,7 +1976,7 @@ local function GetExtraDuration(duration, status)
 end
 
 function RecallTracker.OnTeleport(obj, name, duration_secs, status)
-	if (obj.IsEnemy) then
+	if (RecallTracker.Menu.RT_Toggle.Value and obj.IsEnemy) then
 		local i_status = GetRecallStatus(status)
 		local duration = GetExtraDuration(duration_secs, i_status)
 		local ETA = OSClock() + duration
@@ -1955,20 +1992,16 @@ function RecallTracker.OnTeleport(obj, name, duration_secs, status)
 end
 
 function RecallTracker.OnMouseEvent(e)
-
-        local adjustKey = Menu.Get("RT.Key", true)
-        local adjustToggle = Menu.Get("RT.AdjustToggle", true)
-		if (adjustKey and adjustToggle) then
+	if (RecallTracker.Menu.RT_Toggle.Value and RecallTracker.Menu.IsOpen) then
+		if (RecallTracker.Menu.RT_AdjustToggle.Value) then
 			local event = RecallTracker.MouseEvent[e]
 			-- 513 is Left Mouse Down
 			if (event) then
-                if (event == 1) then
-                    local adjustX = Menu.Get("RT.AdjustX", true)
-                    local adjustY = Menu.Get("RT.AdjustY", true)
+				if (event == 1) then
 					local tempLocation =
 						Vector(
-						RecallTracker.DefaultLocation.x + adjustX,
-						RecallTracker.DefaultLocation.y + adjustY,
+						RecallTracker.DefaultLocation.x + RecallTracker.Menu.RT_AdjustX.Value,
+						RecallTracker.DefaultLocation.y + RecallTracker.Menu.RT_AdjustY.Value,
 						0
 					)
 					local mousePos = Renderer.GetCursorPos()
@@ -1981,7 +2014,7 @@ function RecallTracker.OnMouseEvent(e)
 				end
 			end
 		end
-	
+	end
 end
 
 --[[
@@ -1991,70 +2024,75 @@ end
 	██  ██  ██ ██   ██ ██ ██  ██ ██ 
 	██      ██ ██   ██ ██ ██   ████ 
 ]]
-
-function IsFeatureEnabled(shortName)
-	if(shortName ) then
-		local checkBox = Menu.Get(shortName..".Enable", true)
-		if(checkBox) then
-			return true
-		end
-	end
-	return false
-end
-
 function OnUnkillableMinion(minion)
 	local unkillable = Activator.OnUnkillableMinion
-	if ( unkillable and IsFeatureEnabled("AT") ) then
+	if ( unkillable ) then
 		unkillable(minion)
+	else
+		EventManager.RemoveCallback(Enums.Events.OnUnkillableMinion, OnUnkillableMinion)
 	end
 end
 
 function OnUpdate()
 	local update = BlockMinion.OnUpdate
-	if ( update and IsFeatureEnabled("BM") ) then
+	if ( update ) then
 		update()
+	else
+		EventManager.RemoveCallback(Enums.Events.OnUpdate, OnUpdate)
 	end
 end
 
 function OnIssueOrder(Args)
 	local issueOrder = TurnAround.OnIssueOrder
-	if ( issueOrder and IsFeatureEnabled( "TA") ) then
+	if ( issueOrder ) then
 		TurnAround.OnIssueOrder(Args)
+	else
+		EventManager.RemoveCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
 	end
 end
 
 function OnProcessSpell(obj, spellcast)
 	local onProcess = TurnAround.OnProcessSpell
-	if ( onProcess and IsFeatureEnabled("TA") ) then
+	if ( onProcess ) then
 		onProcess(obj, spellcast)
+	else
+		EventManager.RemoveCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
 	end
 end
 
 function OnNewPath(obj, pathing)
 	local onPath = PathTracker.OnNewPath
-	if ( onPath and IsFeatureEnabled("PT") ) then
+	if ( onPath ) then
 		onPath(obj, pathing)
+	else
+		EventManager.RemoveCallback(Enums.Events.OnNewPath, OnNewPath)
 	end
 end
 
 function OnCastSpell(Args)
 	local onCast = SSUtility.OnCastSpell
-	if ( onCast and IsFeatureEnabled("SU") ) then
+	if ( onCast ) then
 		onCast(Args)
+	else
+		EventManager.RemoveCallback(Enums.Events.OnCastSpell, OnCastSpell)
 	end
 end
 
 function OnTeleport(obj, name, duration_secs, status)
 	local onTP = RecallTracker.OnTeleport
-	if ( onTP and IsFeatureEnabled("RT") ) then
+	if ( onTP ) then
 		onTP(obj, name, duration_secs, status)
+	else
+		EventManager.RemoveCallback(Enums.Events.OnTeleport, OnTeleport)
 	end
 end
 
 function OnMouseEvent(e, message, wparam, lparam)
 	local onMouse = RecallTracker.OnMouseEvent
-	if ( onMouse and IsFeatureEnabled("RT") ) then
+	if ( onMouse ) then
 		onMouse(e)
+	else
+		EventManager.RemoveCallback(Enums.Events.OnMouseEvent, OnMouseEvent)
 	end
 end
 
@@ -2062,19 +2100,19 @@ function OnTick()
 	local tick = OSClock()
 	if (TickCount < tick) then
 		TickCount = tick + 0.3
-        for i, v in ipairs(ActiveFeaturedClasses) do
-            local onTick = v.Class.OnTick
-            if (onTick and IsFeatureEnabled(v.ShortName)) then
-                onTick()
-            end
-        end
+		for i = 1, #FeaturedClasses do
+			local onTick = FeaturedClasses[i].OnTick
+			if (onTick ~= nil) then
+				onTick()
+			end
+		end
 	end
 end
 
 function OnDraw()
-    for i, v in ipairs(ActiveFeaturedClasses) do
-        local onDraw = v.Class.OnDraw
-        if (onDraw and IsFeatureEnabled(v.ShortName)) then
+	for i = 1, #FeaturedClasses do
+		local onDraw = FeaturedClasses[i].OnDraw
+		if (onDraw ~= nil) then
 			onDraw()
 		end
 	end
@@ -2084,9 +2122,9 @@ function OnCreateObject(obj)
 	if (obj == nil) then
 		return
 	end
-    for i, v in ipairs(ActiveFeaturedClasses) do
-		local onCreate = v.Class.OnCreateObject
-		if (onCreate and IsFeatureEnabled(v.ShortName)) then
+	for i = 1, #FeaturedClasses do
+		local onCreate = FeaturedClasses[i].OnCreateObject
+		if (onCreate ~= nil) then
 			onCreate(obj)
 		end
 	end
@@ -2096,94 +2134,38 @@ function OnDeleteObject(obj)
 	if (obj == nil) then
 		return
 	end
-	for i, v in ipairs(ActiveFeaturedClasses) do
-		local onDelete = v.Class.OnDeleteObject
-        if (onDelete and IsFeatureEnabled(v.ShortName)) then
+	for i = 1, #FeaturedClasses do
+		local onDelete = FeaturedClasses[i].OnDeleteObject
+		if (onDelete ~= nil) then
 			onDelete(obj)
 		end
 	end
 end
 
---@param enable boolean a boolean of the enabled check box
---@param feature Class Feature class
-local function FeatureEnabler(enable, feature)
-    if ( not enable ) then
-		-- for k, v in pairs(Enums.Events) do
-		-- 	local event = tostring(k)
-		-- 	if ( feature[event] ) then
-		-- 		feature[event] = nil
-		-- 	end
-        -- end
-        -- feature.Init = nil
-        -- feature.Menu = nil
-        -- feature = nil
-		-- collectgarbage()
-		return 
-    end
-    if( feature.Menu) then
-        feature.Menu()
-    end
-	return 
-end
-
---@param name string Submenu name
---@param featureType enum(number) Type of the submenu
-function SubMenuCreator(name, featureType)
-    Menu.NewTree(name, name, function ()
-        for k, v in pairs(FeaturedClassesInit) do
-            if( v.Type == featureType ) then
-                local enable = Menu.Checkbox(v.ShortName..".Enable", "Enable "..v.FullName, true)
-                if ( v.FeatureClass.Init ) then
-                    FeatureEnabler(enable, v.FeatureClass)
-                end
-            end
-        end
-    end)
-end
-
---[[
-    Activators = 1,
-    Detectors = 2,
-    Drawings = 3,
-    Timers = 4,
-    Trackers = 5,
-    Others = 6
-]]
-function MainMenu()
-    Menu.Text("Version "..format("%.1f", Version), false)
-    Menu.Separator()
-    for k, v in pairs(FeatureType) do
-        local str = tostring(k)
-        SubMenuCreator(str, v)
-    end
-    Menu.Separator()
-	Menu.ColoredText("If you encounter any bug or error", 0x00FF00FF, true)
-	Menu.ColoredText("please report on the forum with your robur.log file", 0x00FF00FF, true)
-end
-
 function OnLoad()
-	for k, v in pairs(FeaturedClassesInit) do
-        local init = v.FeatureClass.Init
-        if (init) then
-            init()
-            table.insert(ActiveFeaturedClasses, {Class = v.FeatureClass, ShortName = v.ShortName})
-        end
-    end
-
 	EventManager.RegisterCallback(Enums.Events.OnUpdate, OnUpdate)
 	EventManager.RegisterCallback(Enums.Events.OnTick, OnTick)
 	EventManager.RegisterCallback(Enums.Events.OnDraw, OnDraw)
 	EventManager.RegisterCallback(Enums.Events.OnCreateObject, OnCreateObject)
 	EventManager.RegisterCallback(Enums.Events.OnDeleteObject, OnDeleteObject)
-    EventManager.RegisterCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
-    EventManager.RegisterCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
-    EventManager.RegisterCallback(Enums.Events.OnNewPath, OnNewPath)
+	EventManager.RegisterCallback(Enums.Events.OnIssueOrder, OnIssueOrder)
+	EventManager.RegisterCallback(Enums.Events.OnProcessSpell, OnProcessSpell)
+	EventManager.RegisterCallback(Enums.Events.OnNewPath, OnNewPath)
 	EventManager.RegisterCallback(Enums.Events.OnCastSpell, OnCastSpell)
 	EventManager.RegisterCallback(Enums.Events.OnUnkillableMinion, OnUnkillableMinion)
 	EventManager.RegisterCallback(Enums.Events.OnTeleport, OnTeleport)
 	EventManager.RegisterCallback(Enums.Events.OnMouseEvent, OnMouseEvent)
 
-    Menu.RegisterMenu("E2Utility", "E2Utility", MainMenu)
+	for k, v in pairs(FeaturedClassesInit) do
+		local toggle = AttachToggleMenu(v.ShortName, v.FullName, v.FeatureClass)
+		if (toggle) then
+			local Init = v.FeatureClass.Init
+			if (Init) then
+				Init()
+			end
+		end
+	end
+
 	print("[E2Slayer] E2Utility is Loaded - " .. format("%.1f", Version))
 	return true
 end
