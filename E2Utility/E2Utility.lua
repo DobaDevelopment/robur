@@ -2039,6 +2039,8 @@ function WardTracker.Init()
 	}
 
 	WardTracker.CurrentWards = {}
+
+	WardTracker.SavedYellowTrinketDuration = 90
 end
 
 function WardTracker.Menu()
@@ -2058,46 +2060,6 @@ end
 
 local function WardDrawCondition(wardPos)
 	return (Renderer.IsOnScreen(wardPos))
-end
-
-
-function WardTracker.AddWards(objString)
-	local objList = ObjManager.Get("enemy", objString)
-	local gameTime = Game:GetTime()
-	for handle, ward in pairs(objList) do
-		if( ward ) then
-			if (not WardTracker.CurrentWards[handle]) then
-				local wardAI = ward.AsAI
-				local name = wardAI.CharName
-				local isWard = WardTracker.WardsInfo[name]
-				if ( wardAI and name and isWard) then
-					local cond = IsWardValid(wardAI, false)
-					if ( cond and isWard) then
-						local duration = wardAI.Mana
-						if( isWard.Type == WardTracker.WardTypes.GhostPoro) then
-							duration = isWard.Duration
-						end
-						local wardStruct = {Object= ward, Position = ward.Position,Type = isWard.Type, EndTime = gameTime + duration, Sprite = isWard.Sprite, MiniMapSprite = isWard.MiniMapSprite, IsManuallyAdded = false}
-						WardTracker.CurrentWards[handle] = wardStruct
-					else
-						WardTracker.CurrentWards[handle] = nil
-					end
-				end
-			end
-
-			for i, v in ipairs(WardTracker.ManullyAddedWards) do
-				if ( v ) then
-					local distance = v.Position:Distance(ward)
-					-- if there is already a manual ward, remove it 
-					if( distance < 50 ) then
-						WardTracker.CurrentWards[WardTracker.ManullyAddedWards[i].Index] = nil
-						WardTracker.ManullyAddedWards[i] = nil
-						break
-					end
-				end
-			end
-		end
-	end
 end
 
 local function GetAverageAllChamps()
@@ -2122,11 +2084,59 @@ local function GetYellowTrinketDuration()
 	return 88.235 + 1.765*GetAverageAllChamps()
 end
 
+function WardTracker.AddWards(objString)
+	local objList = ObjManager.Get("all", objString)
+	local gameTime = Game:GetTime()
+	for handle, ward in pairs(objList) do
+		if( ward and not ward.IsAlly) then 
+			if (not WardTracker.CurrentWards[handle]) then
+				local wardAI = ward.AsAI
+				local name = wardAI.CharName
+				local isWard = WardTracker.WardsInfo[name]
+				if ( wardAI and name and isWard) then
+					local cond = IsWardValid(wardAI, false)
+					if ( cond and isWard) then
+						local duration = isWard.Duration
+						if( isWard.Type ~= WardTracker.WardTypes.GhostPoro and duration < wardAI.Mana ) then
+							duration = wardAI.Mana
+						elseif ( isWard.Type == WardTracker.WardTypes.YellowTrinket and duration > wardAI.Mana) then
+							duration = WardTracker.SavedYellowTrinketDuration
+						end
+						local wardStruct = {Object= ward, Position = ward.Position,Type = isWard.Type, EndTime = gameTime + duration, Sprite = isWard.Sprite, MiniMapSprite = isWard.MiniMapSprite, IsManuallyAdded = false}
+						WardTracker.CurrentWards[handle] = wardStruct
+					
+					else
+						WardTracker.CurrentWards[handle] = nil
+					end
+				end
+			end
+
+			for i, v in ipairs(WardTracker.ManullyAddedWards) do
+				if ( v ) then
+					local distance = v.Position:Distance(ward)
+					-- if there is already a manual ward, remove it 
+					if( distance < 50 ) then
+						WardTracker.CurrentWards[WardTracker.ManullyAddedWards[i].Index] = nil
+						WardTracker.ManullyAddedWards[i] = nil
+						break
+					end
+				end
+			end
+		end
+		
+	end
+end
+
 function WardTracker.OnProcessSpell(obj, spellcast)
-	if( spellcast.Slot >= 6 and spellcast.Name) then
+	if( spellcast.Slot >= 6 and spellcast.Name and not obj.IsAlly ) then
 		local wardSpell = WardTracker.SpellCastInfo[spellcast.Name]
 		if( wardSpell ) then
 			local endPos = spellcast.EndPos
+			local newDuration = 90
+			if( wardSpell.Type == WardTracker.WardTypes.YellowTrinket) then
+				newDuration = GetYellowTrinketDuration()
+				WardTracker.SavedYellowTrinketDuration = newDuration
+			end
 
 			if (Nav.IsWall(endPos)) then
 				endPos = GetClosestNonWall(spellcast.EndPos)
@@ -2158,7 +2168,7 @@ function WardTracker.OnProcessSpell(obj, spellcast)
 				local isWard = WardTracker.WardsInfo[wardSpell.Name]
 				local duration = isWard.Duration;
 				if( wardSpell.Type == WardTracker.WardTypes.YellowTrinket) then
-					duration = GetYellowTrinketDuration()
+					duration = newDuration
 				end
 				local wardStruct = {Object= obj, Position = endPos, Type = wardSpell.Type, EndTime = currentTime + duration, Sprite = isWard.Sprite, MiniMapSprite = isWard.MiniMapSprite, IsManuallyAdded = true}
 				WardTracker.CurrentWards[index] = wardStruct
@@ -2171,7 +2181,7 @@ end
 
 function WardTracker.OnCreateObject(obj)
 	local objName = obj.Name
-	if( objName and obj.IsMinion) then
+	if( objName and obj.IsMinion and not obj.IsAlly)  then
 		local wardDeath = WardTracker.DeleteManualWards[objName]
 		if( wardDeath ) then
 			for k, ward in pairs(WardTracker.CurrentWards) do
