@@ -13,7 +13,7 @@ local itemID = require("lol\\Modules\\Common\\itemID")
 local SpellSlots, SpellStates = Enums.SpellSlots, Enums.SpellStates
 local Player = ObjManager.Player
 local OSClock, floor, format = os.clock, math.floor, string.format
-local Version = 2.6
+local Version = 2.5
 
 local JungleTimer = {}
 local CloneTracker = {}
@@ -27,7 +27,6 @@ local PathTracker = {}
 local BlockMinion = {}
 local SSUtility = {}
 local RecallTracker = {}
-local WardTracker = {}
 
 local ActiveFeaturedClasses = {}
 
@@ -53,7 +52,6 @@ local FeaturedClassesInit = {
 	{ShortName = "BM", FullName = "BlockMinion", FeatureClass = BlockMinion, Type = FeatureType.Others},
 	{ShortName = "SU", FullName = "SSUtility", FeatureClass = SSUtility, Type = FeatureType.Others},
 	{ShortName = "RT", FullName = "RecallTracker", FeatureClass = RecallTracker, Type = FeatureType.Trackers},
-	{ShortName = "WT", FullName = "WardTracker", FeatureClass = WardTracker, Type = FeatureType.Trackers},
 }
 
 local TextClipper = Vector(30, 15, 0)
@@ -1987,244 +1985,6 @@ function RecallTracker.OnMouseEvent(e)
 end
 
 --[[
-	██     ██  █████  ██████  ██████      ████████ ██████   █████   ██████ ██   ██ ███████ ██████  
-	██     ██ ██   ██ ██   ██ ██   ██        ██    ██   ██ ██   ██ ██      ██  ██  ██      ██   ██ 
-	██  █  ██ ███████ ██████  ██   ██        ██    ██████  ███████ ██      █████   █████   ██████  
-	██ ███ ██ ██   ██ ██   ██ ██   ██        ██    ██   ██ ██   ██ ██      ██  ██  ██      ██   ██ 
-	 ███ ███  ██   ██ ██   ██ ██████         ██    ██   ██ ██   ██  ██████ ██   ██ ███████ ██   ██ 																					
-]]
-
-function WardTracker.Init()
-
-	WardTracker.WardTypes = {
-		PinkWard = 0,
-		BlueTrinket = 1,
-		YellowTrinket = 2,
-		SightWard = 3,
-		GhostPoro = 4,
-		ZombieWard = 5
-	}
-	local folderPath = "Wards\\"
-	local spritePaths = {
-		[WardTracker.WardTypes.SightWard] = folderPath.."Totem_Ward_icon.png",
-		[WardTracker.WardTypes.PinkWard] = folderPath.."Control_Ward_icon.png",
-		[WardTracker.WardTypes.YellowTrinket] = folderPath.."Totem_Ward_icon.png",
-		[WardTracker.WardTypes.BlueTrinket] = folderPath.."Blue_Ward_icon.png",
-	}
-	
-	local spriteSize = {x= 32, y=32}
-	local spriteMiniSize = {x=16, y=16}
-	
-	WardTracker.WardsInfo = {
-		["SightWard"] = {Duration = 150, Color = 0x0, Type = WardTracker.WardTypes.SightWard, Sprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.SightWard],spriteSize.x,spriteSize.y), MiniMapSprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.SightWard],spriteMiniSize.x,spriteMiniSize.y) },
-		["JammerDevice"] = {Duration = -1, Color = 0x0, Type = WardTracker.WardTypes.PinkWard, Sprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.PinkWard],spriteSize.x,spriteSize.y), MiniMapSprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.PinkWard],spriteMiniSize.x,spriteMiniSize.y) },
-		["YellowTrinket"] = {Duration = 90, Color = 0x0, Type = WardTracker.WardTypes.YellowTrinket, Sprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.YellowTrinket],spriteSize.x,spriteSize.y), MiniMapSprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.YellowTrinket],spriteMiniSize.x,spriteMiniSize.y) },
-		["BlueTrinket"] = {Duration = -1, Color = 0x0, Type = WardTracker.WardTypes.BlueTrinket, Sprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.BlueTrinket],spriteSize.x,spriteSize.y), MiniMapSprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.BlueTrinket],spriteMiniSize.x,spriteMiniSize.y) },
-		["DominationScout"] = {Duration = 61, Color = 0x0, Type = WardTracker.WardTypes.GhostPoro, Sprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.SightWard],spriteSize.x,spriteSize.y), MiniMapSprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.SightWard],spriteMiniSize.x,spriteMiniSize.y)},
-	--	["Perks_CorruptedWard_Idle"] = {Duration = 120, Color = 0x0, Type = WardTracker.WardTypes.ZombieWard, Sprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.SightWard],spriteSize.x,spriteSize.y), MiniMapSprite = Renderer.CreateSprite(spritePaths[WardTracker.WardTypes.SightWard],spriteMiniSize.x,spriteMiniSize.y)},
-	}
-
-	WardTracker.SpellCastInfo = {
-		["ItemGhostWard"] = {Name = "SightWard", Type = WardTracker.WardTypes.SightWard},
-		["JammerDevice"] = {Name = "JammerDevice", Type = WardTracker.WardTypes.PinkWard},
-		["TrinketTotemLvl1"] = {Name = "YellowTrinket", Type = WardTracker.WardTypes.YellowTrinket},
-		["TrinketOrbLvl3"] = {Name = "BlueTrinket", Type = WardTracker.WardTypes.BlueTrinket},
-	}
-
-	WardTracker.ManullyAddedWards = {
-	}
-
-	WardTracker.DeleteManualWards = {
-		["WardCorpse"] = true,
-	}
-
-	WardTracker.CurrentWards = {}
-end
-
-function WardTracker.Menu()
-	
-	local str = "WardTracker"
-    local shortName = "WT"
-    Menu.NewTree(str, str, function ()
-        Menu.Checkbox(shortName..".DrawMap", "Draw on the Map", true)
-		Menu.Checkbox(shortName..".DrawMapTimer", "Draw Timer on the Map", true)
-		Menu.Checkbox(shortName..".DrawMiniMap", "Draw on the MiniMap", true)
-    end)
-end
-
-local function IsWardValid(ward, manuallyAdded )
-	return (not manuallyAdded and ward and ward.IsValid and not ward.IsDead ) or (ward and manuallyAdded)
-end
-
-local function WardDrawCondition(wardPos)
-	return (Renderer.IsOnScreen(wardPos))
-end
-
-
-function WardTracker.AddWards(objString)
-	local objList = ObjManager.Get("all", objString)
-	local gameTime = Game:GetTime()
-	for handle, ward in pairs(objList) do
-		if( ward ) then
-			if (not WardTracker.CurrentWards[handle]) then
-				local wardAI = ward.AsAI
-				local name = wardAI.CharName
-				local isWard = WardTracker.WardsInfo[name]
-				if ( wardAI and name and isWard) then
-					local cond = IsWardValid(wardAI, false)
-					if ( cond and isWard) then
-						local duration = wardAI.Mana
-						if( isWard.Type == WardTracker.WardTypes.GhostPoro) then
-							duration = isWard.Duration
-						end
-						local wardStruct = {Object= ward, Position = ward.Position,Type = isWard.Type, EndTime = gameTime + duration, Sprite = isWard.Sprite, MiniMapSprite = isWard.MiniMapSprite, IsManuallyAdded = false}
-						WardTracker.CurrentWards[handle] = wardStruct
-					else
-						WardTracker.CurrentWards[handle] = nil
-					end
-				end
-			end
-
-			for i, v in ipairs(WardTracker.ManullyAddedWards) do
-				if ( v ) then
-					local distance = v.Position:Distance(ward)
-					-- if there is already a manual ward, remove it 
-					if( distance < 50 ) then
-						WardTracker.CurrentWards[WardTracker.ManullyAddedWards[i].Index] = nil
-						WardTracker.ManullyAddedWards[i] = nil
-						break
-					end
-				end
-			end
-		end
-	end
-end
-
-local function GetAverageAllChamps()
-	local objList = ObjManager.Get("all", "heroes")
-	local avg = 0
-	local numberOfHeroes = 0
-	for handle, hero in pairs(objList) do
-		local heroAI = hero.AsHero
-		if( heroAI and heroAI.Level) then
-			avg = avg + heroAI.Level
-			numberOfHeroes = numberOfHeroes + 1
-		end
-	end
-	if ( avg == 0 ) then
-		return 1
-	end
-	return floor( (avg / numberOfHeroes) + 0.5)
-end
-
--- 88.235 + 1.765*average of all champion levels
-local function GetYellowTrinketDuration()
-	return 88.235 + 1.765*GetAverageAllChamps()
-end
-
-function WardTracker.OnProcessSpell(obj, spellcast)
-	if( spellcast.Slot >= 6 and spellcast.Name) then
-		local wardSpell = WardTracker.SpellCastInfo[spellcast.Name]
-		if( wardSpell ) then
-			local endPos = spellcast.EndPos
-
-			if (Nav.IsWall(endPos)) then
-				endPos = GetClosestNonWall(spellcast.EndPos)
-			end
-			-- The reason why I do delay is my OnTick() has 0.3 delay, so the CurrentWards may not updated to know there is a duplicate ward 
-			delay(400, function (endPos)
-				for k, ward in pairs(WardTracker.CurrentWards) do
-					if( IsWardValid(ward.Object, ward.manuallyAdded) ) then
-						local distance = ward.Position:Distance(endPos)
-						-- if there is already a ward
-						if( distance < 100 ) then
-							return
-						end
-					else
-						WardTracker.CurrentWards[k] = nil
-					end
-				end
-
-				local currentTime = Game:GetTime()
-				local index = floor(endPos.x)
-				local newWard = WardTracker.CurrentWards[index]
-	
-				-- find an empty space since we don't know the ward's handle
-				while(newWard)
-				do
-					index = index + index
-					newWard = WardTracker.CurrentWards[index]
-				end
-				local isWard = WardTracker.WardsInfo[wardSpell.Name]
-				local duration = isWard.Duration;
-				if( wardSpell.Type == WardTracker.WardTypes.YellowTrinket) then
-					duration = GetYellowTrinketDuration()
-				end
-				local wardStruct = {Object= obj, Position = endPos, Type = wardSpell.Type, EndTime = currentTime + duration, Sprite = isWard.Sprite, MiniMapSprite = isWard.MiniMapSprite, IsManuallyAdded = true}
-				WardTracker.CurrentWards[index] = wardStruct
-				local manuallyAddedWard = {Index = index, Position = endPos}
-				table.insert(WardTracker.ManullyAddedWards, manuallyAddedWard)
-			end, endPos)
-		end
-	end
-end
-
-function WardTracker.OnCreateObject(obj)
-	local objName = obj.Name
-	if( objName and obj.IsMinion) then
-		local wardDeath = WardTracker.DeleteManualWards[objName]
-		if( wardDeath ) then
-			for k, ward in pairs(WardTracker.CurrentWards) do
-				if( ward and ward.IsManuallyAdded ) then
-					local distance = ward.Position:Distance(obj.Position)
-					if( distance < 100 ) then
-						WardTracker.CurrentWards[k] = nil
-						return
-					end
-				end
-			end
-		end
-	end
-end
-
-
-function WardTracker.OnTick()
-	-- The reason why I'm using minion object get is some wards are actually considered as Minion somehow.
-	WardTracker.AddWards("minions")
-	WardTracker.AddWards("wards")
-end
-
-function WardTracker.OnDraw()
-	local drawMap = Menu.Get("WT.DrawMap", true)
-	local drawTimer = Menu.Get("WT.DrawMapTimer", true)
-	local drawMiniMap = Menu.Get("WT.DrawMiniMap", true)
-	local currentTime = Game:GetTime()
-	for k, ward in pairs(WardTracker.CurrentWards) do
-		if( ward) then
-			local wardObj = ward.Object
-			if (ward.IsManuallyAdded and ward.Type >= WardTracker.WardTypes.YellowTrinket and ward.EndTime < currentTime) then
-				WardTracker.CurrentWards[k] = nil
-			elseif ( IsWardValid(wardObj, ward.manuallyAdded) ) then
-				if (WardDrawCondition(ward.Position)) then
-					if ( drawMap ) then
-						ward.Sprite:Draw( Renderer.WorldToScreen(ward.Position) , nil, true)
-					end
-					if (drawTimer and ward.Type >= WardTracker.WardTypes.YellowTrinket and ward.EndTime > currentTime) then
-						Renderer.DrawText(Renderer.WorldToScreen(ward.Position) - Vector(10,-10,0), Vector(150,5,0), SecondsToClock(ward.EndTime-currentTime), 0xFFFFFFFF)
-					end
-				end
-				if ( drawMiniMap) then
-					ward.MiniMapSprite:Draw( Renderer.WorldToMinimap(ward.Position) , nil, true)
-				end
-			else
-				WardTracker.CurrentWards[k] = nil
-			end
-		end
-	end
-end
-
-
---[[
 	███    ███  █████  ██ ███    ██ 
 	████  ████ ██   ██ ██ ████   ██ 
 	██ ████ ██ ███████ ██ ██ ██  ██ 
@@ -2244,7 +2004,7 @@ end
 
 function OnUnkillableMinion(minion)
 	local unkillable = Activator.OnUnkillableMinion
-	if (minion and unkillable and IsFeatureEnabled("AT") ) then
+	if ( unkillable and IsFeatureEnabled("AT") ) then
 		unkillable(minion)
 	end
 end
@@ -2258,46 +2018,35 @@ end
 
 function OnIssueOrder(Args)
 	local issueOrder = TurnAround.OnIssueOrder
-	if ( Args and issueOrder and IsFeatureEnabled( "TA") ) then
+	if ( issueOrder and IsFeatureEnabled( "TA") ) then
 		TurnAround.OnIssueOrder(Args)
 	end
 end
 
 function OnProcessSpell(obj, spellcast)
-	if ( obj and spellcast) then
-		local isHero = obj.IsHero
-		if( not isHero) then
-			return
-		end
-		local onProcess = TurnAround.OnProcessSpell
-		if ( onProcess and IsFeatureEnabled("TA") ) then
-			onProcess(obj, spellcast)
-		end
-
-		local onProcess = WardTracker.OnProcessSpell
-		if ( onProcess and IsFeatureEnabled("WT") ) then
-			onProcess(obj, spellcast)
-		end
+	local onProcess = TurnAround.OnProcessSpell
+	if ( onProcess and IsFeatureEnabled("TA") ) then
+		onProcess(obj, spellcast)
 	end
 end
 
 function OnNewPath(obj, pathing)
 	local onPath = PathTracker.OnNewPath
-	if ( obj and pathing and onPath and IsFeatureEnabled("PT") ) then
+	if ( onPath and IsFeatureEnabled("PT") ) then
 		onPath(obj, pathing)
 	end
 end
 
 function OnCastSpell(Args)
 	local onCast = SSUtility.OnCastSpell
-	if ( Args and onCast and IsFeatureEnabled("SU") ) then
+	if ( onCast and IsFeatureEnabled("SU") ) then
 		onCast(Args)
 	end
 end
 
 function OnTeleport(obj, name, duration_secs, status)
 	local onTP = RecallTracker.OnTeleport
-	if ( obj and onTP and IsFeatureEnabled("RT") ) then
+	if ( onTP and IsFeatureEnabled("RT") ) then
 		onTP(obj, name, duration_secs, status)
 	end
 end
