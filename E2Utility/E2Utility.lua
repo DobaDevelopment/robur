@@ -2062,7 +2062,7 @@ end
 
 
 function WardTracker.AddWards(objString)
-	local objList = ObjManager.Get("all", objString)
+	local objList = ObjManager.Get("enemy", objString)
 	local gameTime = Game:GetTime()
 	for handle, ward in pairs(objList) do
 		if( ward ) then
