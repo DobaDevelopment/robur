@@ -13,7 +13,7 @@ local itemID = require("lol\\Modules\\Common\\itemID")
 local SpellSlots, SpellStates = Enums.SpellSlots, Enums.SpellStates
 local Player = ObjManager.Player
 local OSClock, floor, format = os.clock, math.floor, string.format
-local Version = 2.7
+local Version = 2.6
 
 local JungleTimer = {}
 local CloneTracker = {}
@@ -233,13 +233,15 @@ end
 
 
 function JungleTimer.Menu()
-    Menu.NewTree("JungleTimer", "JungleTimer", function ()
-        Menu.Checkbox("JGT.DrawMap", "Draw Timer on the Map", true)
-        Menu.ColorPicker("JGT.DrawMapColor", "Timer Text on Map Color", 0x00FF00FF)
-        Menu.Checkbox("JGT.DrawMapBG", "Use a Background on Timer", true)
-        Menu.ColorPicker("JGT.DrawMapBGColor", "Background Color", 0x008000FF)
-        Menu.Checkbox("JGT.DrawMiniMap", "Draw Timer on the MiniMap", true)
-        Menu.ColorPicker("JGT.DrawMiniMapColor", "Timer Text on MiniMap Color", 0x00FF00FF)
+    local str = "JungleTimer"
+    local shortName = "JGT"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".DrawMap", "Draw Timer on the Map", true)
+        Menu.ColorPicker(shortName..".DrawMapColor", "Timer Text on Map Color", 0x00FF00FF)
+        Menu.Checkbox(shortName..".DrawMapBG", "Use a Background on Timer", true)
+        Menu.ColorPicker(shortName..".DrawMapBGColor", "Background Color", 0x008000FF)
+        Menu.Checkbox(shortName..".DrawMiniMap", "Draw Timer on the MiniMap", true)
+        Menu.ColorPicker(shortName..".DrawMiniMapColor", "Timer Text on MiniMap Color", 0x00FF00FF)
         Menu.Text("A Unique Feature Included")
         Menu.Text("Read the forum for the details")
     end)
@@ -377,11 +379,14 @@ function CloneTracker.Init()
 end
 
 function CloneTracker.Menu()
-    Menu.NewTree("CloneTracker", "CloneTracker", function ()
-        Menu.Checkbox("CT.TrackOnMap", "Track Clones", true)
-        Menu.ColorPicker("CT.TrackOnMapColor", "Clone Tracker on Text Color", 0x000000FF)
-        Menu.Checkbox("CT.TrackOnMapBG", "Use a Background on Clone", true)
-        Menu.ColorPicker("CT.TrackOnMapBGColor", "Background Color", 0xDF0101FF)
+
+    local str = "CloneTracker"
+    local shortName = "CT"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".TrackOnMap", "Track Clones", true)
+        Menu.ColorPicker(shortName..".TrackOnMapColor", "Clone Tracker on Text Color", 0x000000FF)
+        Menu.Checkbox(shortName..".TrackOnMapBG", "Use a Background on Clone", true)
+        Menu.ColorPicker(shortName..".TrackOnMapBGColor", "Background Color", 0xDF0101FF)
         Menu.Text("Works on Shaco/Wukong/Leblanc/Neeko")
     end)
 end
@@ -513,13 +518,15 @@ function InhibitorsTimer.Init()
 end
 
 function InhibitorsTimer.Menu()
-    Menu.NewTree("InhibitorsTimer", "InhibitorsTimer", function ()
-        Menu.Checkbox("IT.TrackOnMap", "Use a Inhibitors Timer on Map", true)
-        Menu.ColorPicker("IT.TrackOnMapColor", "Inhibitors Timer on Map Color", 0x000000FF)
-        Menu.Checkbox("IT.TrackOnMapBG", "Use a Background on Map", true)
-        Menu.ColorPicker("IT.TrackOnMapBGColor", "Background Color", 0xDF0101FF)
-        Menu.Checkbox("IT.TrackOnMiniMap", "Use a Inhibitors Timer on MiniMap", true)
-        Menu.ColorPicker("IT.TrackOnMiniMapColor", "Inhibitors Timer on MiniMap Color", 0x00FF00FF)
+    local str = "InhibitorsTimer"
+    local shortName = "IT"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".TrackOnMap", "Use a Inhibitors Timer on Map", true)
+        Menu.ColorPicker(shortName..".TrackOnMapColor", "Inhibitors Timer on Map Color", 0x000000FF)
+        Menu.Checkbox(shortName..".TrackOnMapBG", "Use a Background on Map", true)
+        Menu.ColorPicker(shortName..".TrackOnMapBGColor", "Background Color", 0xDF0101FF)
+        Menu.Checkbox(shortName..".TrackOnMiniMap", "Use a Inhibitors Timer on MiniMap", true)
+        Menu.ColorPicker(shortName..".TrackOnMiniMapColor", "Inhibitors Timer on MiniMap Color", 0x00FF00FF)
     end)
 end
 
@@ -639,13 +646,15 @@ function DragonBaronTracker.Init()
 end
 
 function DragonBaronTracker.Menu()
-    Menu.NewTree("DragonBaronTracker", "DragonBaronTracker", function ()
-        Menu.Checkbox("DBT.TrackDragon", "Track Dragon", true)
-        Menu.ColorPicker("DBT.TrackDragonColor", "Dragon Tracker Text Color", 0x000000FF)
-        Menu.ColorPicker("DBT.TrackDragonBGColor", "Dragon Tracker Background Color", 0xCC6600FF)
-        Menu.Checkbox("DBT.TrackBaron", "Track Baron", true)
-        Menu.ColorPicker("DBT.TrackBaronColor", "Baron Tracker Text Color", 0x000000FF)
-        Menu.ColorPicker("DBT.TrackBaronBGColor", "Baron Tracker Background Color", 0x990099FF)
+    local str = "DragonBaronTracker"
+    local shortName = "DBT"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".TrackDragon", "Track Dragon", true)
+        Menu.ColorPicker(shortName..".TrackDragonColor", "Dragon Tracker Text Color", 0x000000FF)
+        Menu.ColorPicker(shortName..".TrackDragonBGColor", "Dragon Tracker Background Color", 0xCC6600FF)
+        Menu.Checkbox(shortName..".TrackBaron", "Track Baron", true)
+        Menu.ColorPicker(shortName..".TrackBaronColor", "Baron Tracker Text Color", 0x000000FF)
+        Menu.ColorPicker(shortName..".TrackBaronBGColor", "Baron Tracker Background Color", 0x990099FF)
         Menu.Text("The Tracker Works on Fog of War as Well")
     end)
 
@@ -851,11 +860,13 @@ function CooldownTracker.Init()
 end
 
 function CooldownTracker.Menu()
-    Menu.NewTree("CooldownTracker", "CooldownTracker", function ()
-        Menu.Checkbox("CDT.TrackMe", "Track Me", true)
-        Menu.Checkbox("CDT.TrackAlly", "Track Ally", true)
-        Menu.Checkbox("CDT.TrackEnemy", "Track Enemy", true)
-        Menu.Checkbox("CDT.Adjustment", "Adjust CDTracker Position for Champions", true)
+    local str = "CooldownTracker"
+    local shortName = "CDT"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".TrackMe", "Track Me", true)
+        Menu.Checkbox(shortName..".TrackAlly", "Track Ally", true)
+        Menu.Checkbox(shortName..".TrackEnemy", "Track Enemy", true)
+        Menu.Checkbox(shortName..".Adjustment", "Adjust CDTracker Position for Champions", true)
         Menu.Text("^-> eg. Annie, Jhin, Ryze ... etc")
     end)
 end
@@ -1042,6 +1053,33 @@ function Activator.Init()
 	}
 
 	Activator.Offensive = {
+		[itemID.HextechGunblade] = {
+			Name = "Hextech Gunblade",
+			Type = Activator.EnumOffensiveType.Targeted,
+			Range = 700,
+			EnemyHealth = 80,
+			MyHealth = 35,
+			MenuName = "Gunblade",
+			Menu = {}
+		},
+		[itemID.BladeOftheRuinedKing] = {
+			Name = "Blade of the Ruined King",
+			Type = Activator.EnumOffensiveType.Targeted,
+			Range = 600,
+			EnemyHealth = 80,
+			MyHealth = 35,
+			MenuName = "Botrk",
+			Menu = {}
+		},
+		[itemID.BilgewaterCutlass] = {
+			Name = "Bilgewater Cutlass",
+			Type = Activator.EnumOffensiveType.Targeted,
+			Range = 600,
+			EnemyHealth = 80,
+			MyHealth = 35,
+			MenuName = "Cutlass",
+			Menu = {}
+		},
 		[itemID.YoumuusGhostblade] = {
 			Name = "Youmuus Ghostblade",
 			Type = Activator.EnumOffensiveType.Targeted,
@@ -1078,8 +1116,8 @@ function Activator.Init()
 			MenuName = "Titanic",
 			Menu = {}
 		},
-		[6656] = {
-			Name = "Everfrost",
+		[itemID.HextechGLP800] = {
+			Name = "Hextech GLP-800",
 			Type = Activator.EnumOffensiveType.NonTargeted,
 			Range = 1000,
 			PredictionInput = {
@@ -1094,7 +1132,7 @@ function Activator.Init()
 			},
 			EnemyHealth = 80,
 			MyHealth = 35,
-			MenuName = "Everfrost",
+			MenuName = "GLP",
 			Menu = {}
 		},
 		[itemID.HextechProtobelt01] = {
@@ -1115,52 +1153,19 @@ function Activator.Init()
 			MyHealth = 35,
 			MenuName = "Protobelt",
 			Menu = {}
-		},
-		[6671] = {
-			Name = "GaleForce",
-			Type = Activator.EnumOffensiveType.NonTargeted,
-			Range = 450,
-			PredictionInput = {
-				Range = 450,
-				Width = 30,
-				Radius = 15,
-				Speed = 1150,
-				Delay = 0,
-				Collisions = {WindWall = true},
-				Type = "Linear",
-				UseHitbox = true
-			},
-			EnemyHealth = 80,
-			MyHealth = 0,
-			MenuName = "GaleForce",
-			Menu = {}
-		},
-		[6693] = {
-			Name = "Prowler's Claw",
-			Type = Activator.EnumOffensiveType.Targeted,
-			Range = 500,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "Prowlersclaw",
-			Menu = {}
-		},
-		[6630] = {
-			Name = "Gore Drinker",
-			Type = Activator.EnumOffensiveType.Active,
-			Range = 450,
-			EnemyHealth = 80,
-			MyHealth = 35,
-			MenuName = "GoreDrinker",
-			Menu = {}
-		},
+		}
 	}
 end
 
 function Activator.Menu()
-	Menu.NewTree("Activator", "Activator", function ()
-		Menu.NewTree("Offensive", "Offensive", function ()
+	    
+    local str = "Activator"
+	local shortName = "AT"
+	local offensive = "Offensive"
+	Menu.NewTree(str, str, function ()
+		Menu.NewTree(offensive, offensive, function ()
 			for k, v in pairs(Activator.Offensive) do
-				local menu = "AT."..v.MenuName
+				local menu = shortName.."."..v.MenuName
 				Menu.NewTree(v.MenuName, v.Name, function ()
 					Menu.Slider(menu..".EnemyHealth", "Enemy Min Health %", v.EnemyHealth, 0, 100, 1)
 					Menu.Slider(menu..".MyHealth", "My Min Health %", v.MyHealth, 0, 100, 1)
@@ -1171,7 +1176,7 @@ function Activator.Menu()
 				end)
 			end
 		end)
-        Menu.Checkbox("AT.FocusedOnly", "Use items on Focused Target ONLY", false)
+        Menu.Checkbox(shortName..".FocusedOnly", "Use items on Focused Target ONLY", false)
     end)
 end
 
@@ -1282,8 +1287,10 @@ function TurnAround.Init()
 end
 
 function TurnAround.Menu()
-    Menu.NewTree("TurnAround", "TurnAround", function ()
-        Menu.Checkbox("TA.Use", "Use TurnAround", true)
+    local str = "TurnAround"
+    local shortName = "TA"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".Use", "Use TurnAround", true)
         Menu.Text("^-> Cassiopeia/Tryndamere Supported")
     end)
 
@@ -1337,11 +1344,14 @@ function TowerRanges.Init()
 end
 
 function TowerRanges.Menu()
-    Menu.NewTree("TowerRanges", "TowerRanges", function ()
-        Menu.Checkbox("TR.Enemy", "Track Enemy Towers", true)
-        Menu.ColorPicker("TR.EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
-        Menu.Checkbox("TR.Ally", "Track Ally Towers", true)
-        Menu.ColorPicker("TR.AllyColor", "Ally Tower Range Color", 0x00FF00FF)
+    
+    local str = "TowerRanges"
+    local shortName = "TR"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".Enemy", "Track Enemy Towers", true)
+        Menu.ColorPicker(shortName..".EnemyColor", "Enemy Tower Range Color", 0xFF0000FF)
+        Menu.Checkbox(shortName..".Ally", "Track Ally Towers", true)
+        Menu.ColorPicker(shortName..".AllyColor", "Ally Tower Range Color", 0x00FF00FF)
     end)
 
 end
@@ -1409,17 +1419,19 @@ function PathTracker.Init()
 end
 
 function PathTracker.Menu()
-    Menu.NewTree("PathTracker", "PathTracker", function ()
-        Menu.Checkbox("PT.Enemy", "Track Enemy PAth", true)
-        Menu.ColorPicker("PT.EnemyColor", "Enemy Path Color", 0xDF0101FF)
-        Menu.Checkbox("PT.Ally", "Track Ally Path", true)
-        Menu.ColorPicker("PT.AllyColor", "Ally Path Color", 0x008000FF)
-        Menu.Checkbox("PT.Waypoints", "Track Waypoints", true)
-        Menu.ColorPicker("PT.WaypointsColor", "Waypoints Color", 0xFFFF00FF)
-        Menu.Checkbox("PT.ETA", "Show Estimated Arrival Time", true)
-        Menu.Checkbox("PT.CharName", "Show Champion Name", true)
-		Menu.ColorPicker("PT.ETAnNameColor", "ETA/ChampName Color", 0xFFFFFFFF)
-		Menu.Checkbox("PT.OnlyJungler", "Track Only Junglers' Path", false)
+    local str = "PathTracker"
+    local shortName = "PT"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".Enemy", "Track Enemy PAth", true)
+        Menu.ColorPicker(shortName..".EnemyColor", "Enemy Path Color", 0xDF0101FF)
+        Menu.Checkbox(shortName..".Ally", "Track Ally Path", true)
+        Menu.ColorPicker(shortName..".AllyColor", "Ally Path Color", 0x008000FF)
+        Menu.Checkbox(shortName..".Waypoints", "Track Waypoints", true)
+        Menu.ColorPicker(shortName..".WaypointsColor", "Waypoints Color", 0xFFFF00FF)
+        Menu.Checkbox(shortName..".ETA", "Show Estimated Arrival Time", true)
+        Menu.Checkbox(shortName..".CharName", "Show Champion Name", true)
+		Menu.ColorPicker(shortName..".ETAnNameColor", "ETA/ChampName Color", 0xFFFFFFFF)
+		Menu.Checkbox(shortName..".OnlyJungler", "Track Only Junglers' Path", false)
         
     end)
 end
@@ -1542,9 +1554,12 @@ function BlockMinion.Init()
 end
 
 function BlockMinion.Menu()
-    Menu.NewTree("BlockMinion", "BlockMinion", function ()
-        Menu.Checkbox("BM.Use", "Use Block Minion", true)
-        Menu.Keybind("BM.Key", "Blocking Key", string.byte('Z'), false, false)
+
+    local str = "BlockMinion"
+    local shortName = "BM"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".Use", "Use Block Minion", true)
+        Menu.Keybind(shortName..".Key", "Blocking Key", string.byte('Z'), false, false)
     end)
 
 end
@@ -1676,13 +1691,15 @@ function SSUtility.Init()
 end
 
 function SSUtility.Menu()
-    Menu.NewTree("SSUtility", "SSUtility", function ()
-        Menu.Checkbox("SU.ExtendedFlash", "Use Extended Flash", true)
-        Menu.Checkbox("SU.Ignite", "Block Flash 1", true)
+    local str = "SSUtility"
+    local shortName = "SU"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".ExtendedFlash", "Use Extended Flash", true)
+        Menu.Checkbox(shortName..".Ignite", "Block Flash 1", true)
         Menu.Text("^- If you die from Ignite", false)
-        Menu.Checkbox("SU.OverWall", "Block Flash 2", true)
+        Menu.Checkbox(shortName..".OverWall", "Block Flash 2", true)
         Menu.Text("^- If you can't flash over the wall", false)
-        Menu.Checkbox("SU.NearTP", "Block TP", true)
+        Menu.Checkbox(shortName..".NearTP", "Block TP", true)
         Menu.Text("^- If you tp to a too close location", false)
     end)
 
@@ -1808,12 +1825,15 @@ function RecallTracker.Init()
 end
 
 function RecallTracker.Menu()
-    Menu.NewTree("RecallTracker", "RecallTracker", function ()
+
+    local str = "RecallTracker"
+    local shortName = "RT"
+    Menu.NewTree(str, str, function ()
         -- 16 is Left Shift
-        Menu.Keybind("RT.Key", "Adjust Key (Default: Shift)", 16, false, false)
-        Menu.Checkbox("RT.AdjustToggle", "Adjust Position", true)
-        Menu.Slider("RT.AdjustX", "Adjust X", 0, -1500, 1000, 10)
-        Menu.Slider("RT.AdjustY", "Adjust Y", 0, -1500, 1000, 10)
+        Menu.Keybind(shortName..".Key", "Adjust Key (Default: Shift)", 16, false, false)
+        Menu.Checkbox(shortName..".AdjustToggle", "Adjust Position", true)
+        Menu.Slider(shortName..".AdjustX", "Adjust X", 0, -1500, 1000, 10)
+        Menu.Slider(shortName..".AdjustY", "Adjust Y", 0, -1500, 1000, 10)
     end)
 
 end
@@ -2024,10 +2044,13 @@ function WardTracker.Init()
 end
 
 function WardTracker.Menu()
-    Menu.NewTree("WardTracker", "WardTracker", function ()
-        Menu.Checkbox("WT.DrawMap", "Draw on the Map", true)
-		Menu.Checkbox("WT.DrawMapTimer", "Draw Timer on the Map", true)
-		Menu.Checkbox("WT.DrawMiniMap", "Draw on the MiniMap", true)
+	
+	local str = "WardTracker"
+    local shortName = "WT"
+    Menu.NewTree(str, str, function ()
+        Menu.Checkbox(shortName..".DrawMap", "Draw on the Map", true)
+		Menu.Checkbox(shortName..".DrawMapTimer", "Draw Timer on the Map", true)
+		Menu.Checkbox(shortName..".DrawMiniMap", "Draw on the MiniMap", true)
     end)
 end
 
@@ -2068,24 +2091,22 @@ function WardTracker.AddWards(objString)
 		if( ward and not ward.IsAlly) then 
 			if (not WardTracker.CurrentWards[handle]) then
 				local wardAI = ward.AsAI
-				if ( wardAI ) then
-					local name = wardAI.CharName
-					local isWard = WardTracker.WardsInfo[name]
-					if ( name and isWard) then
-						local cond = IsWardValid(wardAI, false)
-						if ( cond and isWard) then
-							local duration = isWard.Duration
-							if( isWard.Type ~= WardTracker.WardTypes.GhostPoro and duration < wardAI.Mana ) then
-								duration = wardAI.Mana
-							elseif ( isWard.Type == WardTracker.WardTypes.YellowTrinket and duration > wardAI.Mana) then
-								duration = WardTracker.SavedYellowTrinketDuration
-							end
-							local wardStruct = {Object= ward, Position = ward.Position,Type = isWard.Type, EndTime = gameTime + duration, Sprite = isWard.Sprite, MiniMapSprite = isWard.MiniMapSprite, IsManuallyAdded = false}
-							WardTracker.CurrentWards[handle] = wardStruct
-						
-						else
-							WardTracker.CurrentWards[handle] = nil
+				local name = wardAI.CharName
+				local isWard = WardTracker.WardsInfo[name]
+				if ( wardAI and name and isWard) then
+					local cond = IsWardValid(wardAI, false)
+					if ( cond and isWard) then
+						local duration = isWard.Duration
+						if( isWard.Type ~= WardTracker.WardTypes.GhostPoro and duration < wardAI.Mana ) then
+							duration = wardAI.Mana
+						elseif ( isWard.Type == WardTracker.WardTypes.YellowTrinket and duration > wardAI.Mana) then
+							duration = WardTracker.SavedYellowTrinketDuration
 						end
+						local wardStruct = {Object= ward, Position = ward.Position,Type = isWard.Type, EndTime = gameTime + duration, Sprite = isWard.Sprite, MiniMapSprite = isWard.MiniMapSprite, IsManuallyAdded = false}
+						WardTracker.CurrentWards[handle] = wardStruct
+					
+					else
+						WardTracker.CurrentWards[handle] = nil
 					end
 				end
 			end
@@ -2223,7 +2244,7 @@ end
 
 function IsFeatureEnabled(shortName)
 	if(shortName ) then
-		local checkBox = Menu.Get(shortName, true)
+		local checkBox = Menu.Get(shortName..".Enable", true)
 		if(checkBox) then
 			return true
 		end
@@ -2372,7 +2393,7 @@ function SubMenuCreator(name, featureType)
     Menu.NewTree(name, name, function ()
         for k, v in pairs(FeaturedClassesInit) do
             if( v.Type == featureType ) then
-                local enable = Menu.Checkbox(v.ShortName, "Enable "..v.FullName, true)
+                local enable = Menu.Checkbox(v.ShortName..".Enable", "Enable "..v.FullName, true)
                 if ( v.FeatureClass.Init ) then
                     FeatureEnabler(enable, v.FeatureClass)
                 end
